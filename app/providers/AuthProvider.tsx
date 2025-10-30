@@ -45,24 +45,40 @@ export default function AuthProvider({
   const router = useRouter();
 
   useEffect(() => {
-    checkAuth();
-  }, []);
+    let isMounted = true;
 
-  const checkAuth = async () => {
-    try {
-      const response = await fetch("/api/auth/me");
-      if (response.ok) {
-        const data = await response.json();
-        setUser(data.user);
-      } else {
-        setUser(null);
+    const checkAuthWithTimeout = async () => {
+      try {
+        const response = await fetch("/api/auth/me");
+        if (response.ok) {
+          const data = await response.json();
+          if (isMounted) setUser(data.user);
+        } else {
+          if (isMounted) setUser(null);
+        }
+      } catch (error) {
+        console.error("Auth check error:", error);
+        if (isMounted) setUser(null);
+      } finally {
+        if (isMounted) setLoading(false);
       }
-    } catch (error) {
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    checkAuthWithTimeout();
+
+    // Fallback timeout to prevent infinite loading
+    const timeout = setTimeout(() => {
+      if (isMounted) {
+        console.warn("Auth check timeout - setting loading to false");
+        setLoading(false);
+      }
+    }, 5000);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeout);
+    };
+  }, []);
 
   const login = async (email: string, password: string) => {
     const response = await fetch("/api/auth/login", {
