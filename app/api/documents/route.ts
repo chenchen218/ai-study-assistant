@@ -86,57 +86,107 @@ export async function POST(request: NextRequest) {
 
     // Generate AI content asynchronously
     Promise.all([
-      generateSummary(truncatedText).then(async (summaryContent) => {
-        await Summary.create({
-          documentId: document._id,
-          userId,
-          content: summaryContent,
-        });
-      }),
-      generateNotes(truncatedText).then(async (notesContent) => {
-        await Note.create({
-          documentId: document._id,
-          userId,
-          title: "Study Notes",
-          content: notesContent,
-        });
-      }),
-      generateFlashcards(truncatedText, 10).then(async (flashcards) => {
-        await Flashcard.insertMany(
-          flashcards.map((card: { question: string; answer: string }) => ({
-            documentId: document._id,
-            userId,
-            question: card.question,
-            answer: card.answer,
-          }))
-        );
-      }),
-      generateQuizQuestions(truncatedText, 5).then(async (questions) => {
-        await QuizQuestion.insertMany(
-          questions.map(
-            (q: {
-              question: string;
-              options: string[];
-              correctAnswer: number;
-              explanation?: string;
-            }) => ({
+      generateSummary(truncatedText)
+        .then(async (summaryContent) => {
+          if (summaryContent && summaryContent.trim()) {
+            await Summary.create({
               documentId: document._id,
               userId,
-              question: q.question,
-              options: q.options,
-              correctAnswer: q.correctAnswer,
-              explanation: q.explanation,
-            })
-          )
-        );
-      }),
+              content: summaryContent,
+            });
+            console.log("✅ Summary created successfully");
+          } else {
+            console.warn("⚠️ Summary generation returned empty content");
+          }
+        })
+        .catch((err) => {
+          console.error("❌ Error generating summary:", err?.message || err);
+          throw err;
+        }),
+      generateNotes(truncatedText)
+        .then(async (notesContent) => {
+          if (notesContent && notesContent.trim()) {
+            await Note.create({
+              documentId: document._id,
+              userId,
+              title: "Study Notes",
+              content: notesContent,
+            });
+            console.log("✅ Notes created successfully");
+          } else {
+            console.warn("⚠️ Notes generation returned empty content");
+          }
+        })
+        .catch((err) => {
+          console.error("❌ Error generating notes:", err?.message || err);
+          throw err;
+        }),
+      generateFlashcards(truncatedText, 10)
+        .then(async (flashcards) => {
+          if (flashcards && flashcards.length > 0) {
+            await Flashcard.insertMany(
+              flashcards.map((card: { question: string; answer: string }) => ({
+                documentId: document._id,
+                userId,
+                question: card.question,
+                answer: card.answer,
+              }))
+            );
+            console.log(`✅ Created ${flashcards.length} flashcards`);
+          } else {
+            console.warn("⚠️ Flashcard generation returned empty array");
+          }
+        })
+        .catch((err) => {
+          console.error("❌ Error generating flashcards:", err?.message || err);
+          throw err;
+        }),
+      generateQuizQuestions(truncatedText, 5)
+        .then(async (questions) => {
+          if (questions && questions.length > 0) {
+            await QuizQuestion.insertMany(
+              questions.map(
+                (q: {
+                  question: string;
+                  options: string[];
+                  correctAnswer: number;
+                  explanation?: string;
+                }) => ({
+                  documentId: document._id,
+                  userId,
+                  question: q.question,
+                  options: q.options,
+                  correctAnswer: q.correctAnswer,
+                  explanation: q.explanation,
+                })
+              )
+            );
+            console.log(`✅ Created ${questions.length} quiz questions`);
+          } else {
+            console.warn("⚠️ Quiz generation returned empty array");
+          }
+        })
+        .catch((err) => {
+          console.error(
+            "❌ Error generating quiz questions:",
+            err?.message || err
+          );
+          throw err;
+        }),
     ])
       .then(async () => {
+        console.log("✅ All AI content generated successfully");
         document.status = "completed";
         await document.save();
       })
       .catch(async (error) => {
-        console.error("Error generating AI content:", error);
+        console.error("❌ Error generating AI content:", error);
+        console.error("Error message:", error?.message);
+        console.error("Error name:", error?.name);
+        console.error("Error stack:", error?.stack);
+        if (error?.response) {
+          console.error("Error response:", error.response);
+        }
         document.status = "failed";
         await document.save();
       });

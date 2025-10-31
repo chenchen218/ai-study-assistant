@@ -279,60 +279,62 @@ export default function DocumentPage() {
               <div>
                 {data.quizQuestions.length > 0 ? (
                   <div className="space-y-6">
-                    {data.quizQuestions.map((q, index) => (
-                      <div key={q.id} className="border rounded-lg p-6">
-                        <h3 className="text-lg font-semibold mb-4">
-                          Question {index + 1}: {q.question}
-                        </h3>
-                        <div className="space-y-2">
-                          {q.options.map((option, optIndex) => {
-                            const isSelected = quizAnswers[q.id] === optIndex;
-                            const isCorrect = optIndex === q.correctAnswer;
-                            const showResult = quizSubmitted;
+                    {data.quizQuestions.map((q, index) => {
+                      const showResult = quizSubmitted;
+                      return (
+                        <div key={q.id} className="border rounded-lg p-6">
+                          <h3 className="text-lg font-semibold mb-4">
+                            Question {index + 1}: {q.question}
+                          </h3>
+                          <div className="space-y-2">
+                            {q.options.map((option, optIndex) => {
+                              const isSelected = quizAnswers[q.id] === optIndex;
+                              const isCorrect = optIndex === q.correctAnswer;
 
-                            return (
-                              <label
-                                key={optIndex}
-                                className={`block p-3 border rounded-md cursor-pointer ${
-                                  showResult
-                                    ? isCorrect
-                                      ? "bg-green-100 border-green-500"
-                                      : isSelected && !isCorrect
-                                      ? "bg-red-100 border-red-500"
-                                      : ""
-                                    : isSelected
-                                    ? "bg-indigo-50 border-indigo-500"
-                                    : "border-gray-300 hover:bg-gray-50"
-                                }`}
-                              >
-                                <input
-                                  type="radio"
-                                  name={q.id}
-                                  value={optIndex}
-                                  checked={isSelected}
-                                  onChange={() => {
-                                    setQuizAnswers({
-                                      ...quizAnswers,
-                                      [q.id]: optIndex,
-                                    });
-                                  }}
-                                  disabled={showResult}
-                                  className="mr-2"
-                                />
-                                {option}
-                              </label>
-                            );
-                          })}
-                        </div>
-                        {showResult && q.explanation && (
-                          <div className="mt-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
-                            <p className="text-sm text-gray-700">
-                              {q.explanation}
-                            </p>
+                              return (
+                                <label
+                                  key={optIndex}
+                                  className={`block p-3 border rounded-md cursor-pointer ${
+                                    showResult
+                                      ? isCorrect
+                                        ? "bg-green-100 border-green-500"
+                                        : isSelected && !isCorrect
+                                        ? "bg-red-100 border-red-500"
+                                        : ""
+                                      : isSelected
+                                      ? "bg-indigo-50 border-indigo-500"
+                                      : "border-gray-300 hover:bg-gray-50"
+                                  }`}
+                                >
+                                  <input
+                                    type="radio"
+                                    name={q.id}
+                                    value={optIndex}
+                                    checked={isSelected}
+                                    onChange={() => {
+                                      setQuizAnswers({
+                                        ...quizAnswers,
+                                        [q.id]: optIndex,
+                                      });
+                                    }}
+                                    disabled={showResult}
+                                    className="mr-2"
+                                  />
+                                  {option}
+                                </label>
+                              );
+                            })}
                           </div>
-                        )}
-                      </div>
-                    ))}
+                          {showResult && q.explanation && (
+                            <div className="mt-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
+                              <p className="text-sm text-gray-700">
+                                {q.explanation}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                     {!quizSubmitted ? (
                       <button
                         onClick={() => setQuizSubmitted(true)}

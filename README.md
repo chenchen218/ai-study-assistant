@@ -18,7 +18,7 @@ An intelligent study assistant platform that helps students manage study materia
 - **Frontend**: Next.js 14, React 18, Tailwind CSS
 - **Backend**: Next.js API Routes
 - **Database**: MongoDB with Mongoose
-- **AI**: OpenAI GPT-4
+- **AI**: Google Gemini 1.5 Pro
 - **File Storage**: AWS S3
 - **Authentication**: JWT with httpOnly cookies
 - **Type Safety**: TypeScript
@@ -27,10 +27,12 @@ An intelligent study assistant platform that helps students manage study materia
 
 - Node.js 18+ and npm
 - MongoDB instance (local or MongoDB Atlas recommended)
-- OpenAI API key ([Get one here](https://platform.openai.com/api-keys))
+- Google Gemini API key ([Get one here](https://makersuite.google.com/app/apikey))
 - AWS account with S3 bucket (for file uploads)
 
 ## 🚀 Quick Start
+
+> 👥 **For Team Members**: See [TEAM_SETUP.md](./TEAM_SETUP.md) for a detailed step-by-step setup guide.
 
 ### 1. Clone and Install
 
@@ -63,8 +65,9 @@ Create a `.env.local` file in the root directory:
 # Database
 MONGODB_URI=mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/ai-study-assistant
 
-# OpenAI API (required for AI features)
-OPENAI_API_KEY=sk-your_openai_api_key_here
+# Google Gemini API (required for AI features)
+# Get your API key from: https://makersuite.google.com/app/apikey
+GEMINI_API_KEY=your_gemini_api_key_here
 
 # AWS S3 Configuration (required for file uploads)
 AWS_ACCESS_KEY_ID=your_aws_access_key_id
@@ -206,16 +209,16 @@ ai-study-assistant/
 
 ### Environment Variables
 
-| Variable                | Required    | Description                    |
-| ----------------------- | ----------- | ------------------------------ |
-| `MONGODB_URI`           | ✅ Yes      | MongoDB connection string      |
-| `OPENAI_API_KEY`        | ✅ Yes      | OpenAI API key for AI features |
-| `AWS_ACCESS_KEY_ID`     | ✅ Yes      | AWS access key for S3          |
-| `AWS_SECRET_ACCESS_KEY` | ✅ Yes      | AWS secret key for S3          |
-| `AWS_REGION`            | ✅ Yes      | AWS region (e.g., us-east-1)   |
-| `AWS_S3_BUCKET_NAME`    | ✅ Yes      | S3 bucket name                 |
-| `JWT_SECRET`            | ✅ Yes      | Secret for JWT token signing   |
-| `ADMIN_EMAIL`           | ⚠️ Optional | Email address for admin access |
+| Variable                | Required    | Description                           |
+| ----------------------- | ----------- | ------------------------------------- |
+| `MONGODB_URI`           | ✅ Yes      | MongoDB connection string             |
+| `GEMINI_API_KEY`        | ✅ Yes      | Google Gemini API key for AI features |
+| `AWS_ACCESS_KEY_ID`     | ✅ Yes      | AWS access key for S3                 |
+| `AWS_SECRET_ACCESS_KEY` | ✅ Yes      | AWS secret key for S3                 |
+| `AWS_REGION`            | ✅ Yes      | AWS region (e.g., us-east-1)          |
+| `AWS_S3_BUCKET_NAME`    | ✅ Yes      | S3 bucket name                        |
+| `JWT_SECRET`            | ✅ Yes      | Secret for JWT token signing          |
+| `ADMIN_EMAIL`           | ⚠️ Optional | Email address for admin access        |
 
 ### MongoDB Collections
 
@@ -257,8 +260,8 @@ Error: Please define the MONGODB_URI environment variable
 
 **Solution**:
 
-- Verify `OPENAI_API_KEY` is set correctly
-- Check OpenAI account has credits
+- Verify `GEMINI_API_KEY` is set correctly
+- Check Google AI Studio account has quota/credits
 - Review API rate limits
 
 #### "Loading..." Screen Stuck
@@ -291,7 +294,7 @@ Error: Please define the MONGODB_URI environment variable
 ### ⚠️ Requires Configuration
 
 - **File Uploads**: Needs AWS S3 credentials
-- **AI Features**: Needs OpenAI API key
+- **AI Features**: Needs Google Gemini API key
   - Summaries
   - Study Notes
   - Flashcards
@@ -312,7 +315,7 @@ Error: Please define the MONGODB_URI environment variable
 Make sure to set all environment variables in your hosting platform:
 
 - MongoDB Atlas connection string
-- OpenAI API key
+- Google Gemini API key
 - AWS S3 credentials
 - Strong JWT secret
 - Admin email
