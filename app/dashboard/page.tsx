@@ -20,6 +20,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -75,6 +76,36 @@ export default function DashboardPage() {
       setError("Upload failed. Please try again.");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleDelete = async (documentId: string, fileName: string) => {
+    if (
+      !confirm(
+        `Are you sure you want to delete "${fileName}"? This action cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
+    setDeleting(documentId);
+    try {
+      const response = await fetch(`/api/documents/${documentId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        // Remove the document from the list immediately
+        setDocuments(documents.filter((doc) => doc.id !== documentId));
+        alert("Document deleted successfully");
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || "Failed to delete document");
+      }
+    } catch (error) {
+      alert("Failed to delete document. Please try again.");
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -146,34 +177,46 @@ export default function DashboardPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {documents.map((doc) => (
-              <Link
+              <div
                 key={doc.id}
-                href={`/documents/${doc.id}`}
-                className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
+                className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow relative"
               >
-                <div className="flex items-start justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900 truncate">
-                    {doc.fileName}
-                  </h3>
-                  <span
-                    className={`px-2 py-1 text-xs rounded-full ${
-                      doc.status === "completed"
-                        ? "bg-green-100 text-green-800"
-                        : doc.status === "processing"
-                        ? "bg-yellow-100 text-yellow-800"
-                        : "bg-red-100 text-red-800"
-                    }`}
-                  >
-                    {doc.status}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-500">
-                  {doc.fileType.toUpperCase()}
-                </p>
-                <p className="text-sm text-gray-400 mt-2">
-                  {new Date(doc.uploadedAt).toLocaleDateString()}
-                </p>
-              </Link>
+                <Link href={`/documents/${doc.id}`} className="block">
+                  <div className="flex items-start justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 truncate pr-2">
+                      {doc.fileName}
+                    </h3>
+                    <span
+                      className={`px-2 py-1 text-xs rounded-full flex-shrink-0 ${
+                        doc.status === "completed"
+                          ? "bg-green-100 text-green-800"
+                          : doc.status === "processing"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {doc.status}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    {doc.fileType.toUpperCase()}
+                  </p>
+                  <p className="text-sm text-gray-400 mt-2">
+                    {new Date(doc.uploadedAt).toLocaleDateString()}
+                  </p>
+                </Link>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleDelete(doc.id, doc.fileName);
+                  }}
+                  disabled={deleting === doc.id}
+                  className="mt-4 w-full bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {deleting === doc.id ? "Deleting..." : "Delete"}
+                </button>
+              </div>
             ))}
           </div>
         )}

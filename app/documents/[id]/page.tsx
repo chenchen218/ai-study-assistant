@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { useAuth } from "../providers/AuthProvider";
+import { useAuth } from "../../providers/AuthProvider";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 
@@ -39,7 +39,7 @@ export default function DocumentPage() {
   const { user } = useAuth();
   const router = useRouter();
   const params = useParams();
-  const documentId = params?.id as string;
+  const documentId = (params?.id as string) || "";
 
   const [data, setData] = useState<DocumentData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,10 +59,18 @@ export default function DocumentPage() {
       router.push("/login");
       return;
     }
+    if (!documentId) {
+      setLoading(false);
+      return;
+    }
     fetchDocument();
   }, [user, documentId, router]);
 
   const fetchDocument = async () => {
+    if (!documentId) {
+      setLoading(false);
+      return;
+    }
     try {
       const response = await fetch(`/api/documents/${documentId}`);
       if (response.ok) {

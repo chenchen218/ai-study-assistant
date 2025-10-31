@@ -174,7 +174,16 @@ export async function GET(request: NextRequest) {
       .sort({ createdAt: -1 })
       .select("-s3Key");
 
-    return NextResponse.json({ documents });
+    // Transform MongoDB _id to id for frontend
+    const transformedDocuments = documents.map((doc) => ({
+      id: doc._id.toString(),
+      fileName: doc.fileName,
+      fileType: doc.fileType,
+      status: doc.status,
+      uploadedAt: doc.uploadedAt,
+    }));
+
+    return NextResponse.json({ documents: transformedDocuments });
   } catch (error: any) {
     console.error("Get documents error:", error);
     return NextResponse.json(
