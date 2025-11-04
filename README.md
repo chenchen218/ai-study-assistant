@@ -11,6 +11,12 @@ An intelligent study assistant platform that helps students manage study materia
 - **Flashcards**: Interactive flashcards for active recall (10 per document)
 - **Practice Quizzes**: Multiple-choice questions with explanations (5 per document)
 - **Q&A Chatbot**: Ask questions and get contextual answers about documents
+- **Study Analytics**: Track study time, performance metrics, and learning progress
+  - Study time tracking (automatic)
+  - Quiz accuracy tracking
+  - Flashcard mastery tracking
+  - Study streaks
+  - Weekly/monthly reports with charts
 - **Admin Dashboard**: Monitor system usage and performance
 
 ## 🛠 Technology Stack
@@ -18,7 +24,7 @@ An intelligent study assistant platform that helps students manage study materia
 - **Frontend**: Next.js 14, React 18, Tailwind CSS
 - **Backend**: Next.js API Routes
 - **Database**: MongoDB with Mongoose
-- **AI**: Google Gemini 1.5 Pro
+- **AI**: Google Gemini 2.5 Flash Preview
 - **File Storage**: AWS S3
 - **Authentication**: JWT with httpOnly cookies
 - **Type Safety**: TypeScript
