@@ -53,6 +53,8 @@ export default function DocumentPage() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [qaLoading, setQaLoading] = useState(false);
+  const [studySessionId, setStudySessionId] = useState<string | null>(null);
+  const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -63,30 +65,79 @@ export default function DocumentPage() {
       setLoading(false);
       return;
     }
-    fetchDocument();
-  }, [user, documentId, router]);
 
-  const fetchDocument = async () => {
-    if (!documentId) {
-      setLoading(false);
-      return;
-    }
-    try {
-      const response = await fetch(`/api/documents/${documentId}`);
-      if (response.ok) {
-        const documentData = await response.json();
-        setData(documentData);
-      } else {
-        alert("Document not found");
-        router.push("/dashboard");
+    let sessionId: string | null = null;
+    let startTime: number | null = null;
+
+    const startSession = async () => {
+      try {
+        const response = await fetch("/api/analytics/sessions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "start",
+            documentId,
+            activityType: "reading",
+          }),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          sessionId = data.sessionId;
+          startTime = Date.now();
+          setStudySessionId(sessionId);
+          setSessionStartTime(startTime);
+        }
+      } catch (error) {
+        console.error("Error starting study session:", error);
       }
-    } catch (error) {
-      console.error("Error fetching document:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
+    const endSession = async () => {
+      if (!sessionId || !startTime) return;
+      const duration = Math.floor((Date.now() - startTime) / 60000);
+      try {
+        await fetch("/api/analytics/sessions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "end",
+            sessionId,
+            duration,
+          }),
+        });
+      } catch (error) {
+        console.error("Error ending study session:", error);
+      }
+    };
+
+    const fetchDoc = async () => {
+      if (!documentId) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const response = await fetch(`/api/documents/${documentId}`);
+        if (response.ok) {
+          const documentData = await response.json();
+          setData(documentData);
+        } else {
+          alert("Document not found");
+          router.push("/dashboard");
+        }
+      } catch (error) {
+        console.error("Error fetching document:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDoc();
+    startSession();
+
+    return () => {
+      endSession();
+    };
+  }, [user, documentId, router]);
   const handleAskQuestion = async () => {
     if (!question.trim()) return;
 
@@ -236,6 +287,48 @@ export default function DocumentPage() {
                           Show Answer
                         </button>
                       )}
+                      {showFlashcardAnswer && (
+                        <div className="mt-4 flex gap-2 justify-center">
+                          <button
+                            onClick={async () => {
+                              // Track as "known"
+                              await fetch("/api/analytics/flashcards", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  documentId,
+                                  flashcardId:
+                                    data.flashcards[currentFlashcard].id,
+                                  isKnown: true,
+                                  timeSpent: 30,
+                                }),
+                              });
+                            }}
+                            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
+                          >
+                            ✓ I Know This
+                          </button>
+                          <button
+                            onClick={async () => {
+                              // Track as "need review"
+                              await fetch("/api/analytics/flashcards", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  documentId,
+                                  flashcardId:
+                                    data.flashcards[currentFlashcard].id,
+                                  isKnown: false,
+                                  timeSpent: 30,
+                                }),
+                              });
+                            }}
+                            className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700"
+                          >
+                            ✗ Need Review
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <div className="flex justify-between">
                       <button
@@ -337,7 +430,28 @@ export default function DocumentPage() {
                     })}
                     {!quizSubmitted ? (
                       <button
-                        onClick={() => setQuizSubmitted(true)}
+                        onClick={async () => {
+                          setQuizSubmitted(true);
+                          // Track quiz performance
+                          const startTime = Date.now();
+                          for (const q of data.quizQuestions) {
+                            const selectedAnswer = quizAnswers[q.id];
+                            const timeSpent = Math.floor(
+                              (Date.now() - startTime) / 1000
+                            );
+                            await fetch("/api/analytics/quiz", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                documentId,
+                                quizQuestionId: q.id,
+                                selectedAnswer: selectedAnswer ?? -1,
+                                correctAnswer: q.correctAnswer,
+                                timeSpent,
+                              }),
+                            });
+                          }
+                        }}
                         className="bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700"
                       >
                         Submit Answers
