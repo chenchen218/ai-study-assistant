@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../providers/AuthProvider";
 import Link from "next/link";
+import { Button } from "../components/ui/button";
+import { Card, CardContent } from "../components/ui/card";
 
 interface Stats {
   totalUsers: number;
@@ -67,15 +69,12 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm">
+    <div className="min-h-screen bg-background">
+      <nav className="bg-card border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <Link
-                href="/dashboard"
-                className="text-indigo-600 hover:text-indigo-800 font-medium mr-4"
-              >
+              <Link href="/dashboard" className="text-primary hover:underline mr-4">
                 ← Back to Dashboard
               </Link>
               <h1 className="text-xl font-semibold text-gray-900">
@@ -84,12 +83,7 @@ export default function AdminDashboard() {
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-gray-700">Welcome, {user?.name}</span>
-              <button
-                onClick={logout}
-                className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700"
-              >
-                Logout
-              </button>
+              <Button onClick={logout} variant="destructive">Logout</Button>
             </div>
           </div>
         </div>
@@ -102,42 +96,50 @@ export default function AdminDashboard() {
 
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow-md p-6">
+            <Card>
+              <CardContent className="p-6">
               <h3 className="text-sm font-medium text-gray-500 mb-2">
                 Total Users
               </h3>
               <p className="text-3xl font-bold text-gray-900">
                 {stats.totalUsers}
               </p>
-            </div>
-            <div className="bg-white rounded-lg shadow-md p-6">
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
               <h3 className="text-sm font-medium text-gray-500 mb-2">
                 Total Documents
               </h3>
               <p className="text-3xl font-bold text-gray-900">
                 {stats.totalDocuments}
               </p>
-            </div>
-            <div className="bg-white rounded-lg shadow-md p-6">
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
               <h3 className="text-sm font-medium text-gray-500 mb-2">
                 Completed
               </h3>
               <p className="text-3xl font-bold text-green-600">
                 {stats.statusCounts.completed}
               </p>
-            </div>
-            <div className="bg-white rounded-lg shadow-md p-6">
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
               <h3 className="text-sm font-medium text-gray-500 mb-2">
                 Processing
               </h3>
               <p className="text-3xl font-bold text-yellow-600">
                 {stats.statusCounts.processing}
               </p>
-            </div>
+              </CardContent>
+            </Card>
           </div>
         )}
 
-        <div className="bg-white rounded-lg shadow-md">
+        <Card>
           <div className="px-6 py-4 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900">
               Recent Documents
@@ -191,7 +193,7 @@ export default function AdminDashboard() {
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
       </main>
     </div>
   );

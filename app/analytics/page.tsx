@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../providers/AuthProvider";
 import Link from "next/link";
+import { Button } from "../components/ui/button";
+import { Card, CardContent } from "../components/ui/card";
 
 interface AnalyticsData {
   period: string;
@@ -96,14 +98,14 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm">
+    <div className="min-h-screen bg-background">
+      <nav className="bg-card border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
               <Link
                 href="/dashboard"
-                className="text-indigo-600 hover:text-indigo-800 font-medium mr-4"
+                className="text-primary hover:underline mr-4"
               >
                 ← Back to Dashboard
               </Link>
@@ -118,36 +120,24 @@ export default function AnalyticsPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Period Selector */}
         <div className="mb-6 flex gap-2">
-          <button
+          <Button
             onClick={() => setPeriod("week")}
-            className={`px-4 py-2 rounded-md ${
-              period === "week"
-                ? "bg-indigo-600 text-white"
-                : "bg-white text-gray-700 hover:bg-gray-50"
-            }`}
+            variant={period === "week" ? "default" : "outline"}
           >
             This Week
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => setPeriod("month")}
-            className={`px-4 py-2 rounded-md ${
-              period === "month"
-                ? "bg-indigo-600 text-white"
-                : "bg-white text-gray-700 hover:bg-gray-50"
-            }`}
+            variant={period === "month" ? "default" : "outline"}
           >
             This Month
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => setPeriod("all")}
-            className={`px-4 py-2 rounded-md ${
-              period === "all"
-                ? "bg-indigo-600 text-white"
-                : "bg-white text-gray-700 hover:bg-gray-50"
-            }`}
+            variant={period === "all" ? "default" : "outline"}
           >
             All Time
-          </button>
+          </Button>
         </div>
 
         {/* Study Streak */}
@@ -165,7 +155,8 @@ export default function AnalyticsPage() {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           {/* Total Study Time */}
-          <div className="bg-white rounded-lg shadow-md p-6">
+          <Card>
+            <CardContent className="p-6">
             <h3 className="text-sm font-medium text-gray-500 mb-2">
               Total Study Time
             </h3>
@@ -179,10 +170,12 @@ export default function AnalyticsPage() {
                 ? "This month"
                 : "All time"}
             </p>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* Quiz Accuracy */}
-          <div className="bg-white rounded-lg shadow-md p-6">
+          <Card>
+            <CardContent className="p-6">
             <h3 className="text-sm font-medium text-gray-500 mb-2">
               Quiz Accuracy
             </h3>
@@ -194,10 +187,12 @@ export default function AnalyticsPage() {
             <p className="text-sm text-gray-500 mt-2">
               {data.quiz.correct} / {data.quiz.total} correct
             </p>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* Flashcard Accuracy */}
-          <div className="bg-white rounded-lg shadow-md p-6">
+          <Card>
+            <CardContent className="p-6">
             <h3 className="text-sm font-medium text-gray-500 mb-2">
               Flashcard Mastery
             </h3>
@@ -209,11 +204,13 @@ export default function AnalyticsPage() {
             <p className="text-sm text-gray-500 mt-2">
               {data.flashcards.known} / {data.flashcards.total} mastered
             </p>
-          </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Study Time by Activity */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <Card className="mb-6">
+          <CardContent className="p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
             Study Time by Activity
           </h2>
@@ -245,11 +242,13 @@ export default function AnalyticsPage() {
               )
             )}
           </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Daily Study Time Chart */}
         {data.studyTime.daily.length > 0 && (
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <Card className="mb-6">
+            <CardContent className="p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">
               Daily Study Time
             </h2>
@@ -290,11 +289,13 @@ export default function AnalyticsPage() {
                 </div>
               ))}
             </div>
-          </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Weekly Report */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <Card className="mb-6">
+          <CardContent className="p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
             Weekly Report
           </h2>
@@ -318,10 +319,12 @@ export default function AnalyticsPage() {
               </p>
             </div>
           </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Monthly Report */}
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <Card>
+          <CardContent className="p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
             Monthly Report
           </h2>
@@ -351,7 +354,8 @@ export default function AnalyticsPage() {
               </p>
             </div>
           </div>
-        </div>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );
