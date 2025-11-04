@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import type { ChangeEvent, DragEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../providers/AuthProvider";
@@ -27,17 +27,22 @@ export default function DashboardPage() {
   const [selectedFileName, setSelectedFileName] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [pendingDocumentId, setPendingDocumentId] = useState<string | null>(
+    null
+  );
+  const [processingStatus, setProcessingStatus] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pollingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    if (!user) {
-      router.push("/login");
-      return;
+  const clearPolling = useCallback(() => {
+    if (pollingTimeoutRef.current) {
+      clearTimeout(pollingTimeoutRef.current);
+      pollingTimeoutRef.current = null;
     }
-    fetchDocuments();
-  }, [user, router]);
+  }, []);
 
-  const fetchDocuments = async () => {
+  const fetchDocuments = useCallback(async () => {
+    setLoading(true);
     try {
       const response = await fetch("/api/documents");
       if (response.ok) {
@@ -49,7 +54,63 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  const pollDocumentStatus = useCallback(
+    async (documentId: string) => {
+      try {
+        const response = await fetch(`/api/documents/${documentId}`);
+        if (response.ok) {
+          const payload = await response.json();
+          const status: string | undefined = payload.document?.status;
+
+          if (status === "completed") {
+            setProcessingStatus("");
+            setPendingDocumentId(null);
+            clearPolling();
+            void fetchDocuments();
+            router.push(`/documents/${documentId}`);
+            return;
+          }
+
+          if (status === "failed") {
+            setProcessingStatus("");
+            setPendingDocumentId(null);
+            clearPolling();
+            setError("Document processing failed. Please try again.");
+            void fetchDocuments();
+            return;
+          }
+
+          setProcessingStatus(
+            "Processing your document. We’ll open the study workspace as soon as it’s ready."
+          );
+        } else {
+          console.error("Failed to poll document status.");
+        }
+      } catch (error) {
+        console.error("Error polling document status:", error);
+      }
+
+      clearPolling();
+      pollingTimeoutRef.current = setTimeout(() => {
+        void pollDocumentStatus(documentId);
+      }, 5000);
+    },
+    [clearPolling, fetchDocuments, router]
+  );
+
+  useEffect(() => {
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    void fetchDocuments();
+
+    return () => {
+      clearPolling();
+    };
+  }, [user, router, fetchDocuments, clearPolling]);
 
   const uploadFile = async (file: File) => {
     if (!file) return;
@@ -72,8 +133,20 @@ export default function DashboardPage() {
       });
 
       if (response.ok) {
-        await fetchDocuments();
-        alert("File uploaded successfully! Processing will complete shortly.");
+        const result = await response.json();
+        void fetchDocuments();
+        alert(
+          "File uploaded successfully! We’ll open the study workspace once processing is complete."
+        );
+        const newlyCreatedId: string | undefined = result.document?.id;
+        if (newlyCreatedId) {
+          setPendingDocumentId(newlyCreatedId);
+          setProcessingStatus(
+            "Processing your document. We’ll open the study workspace as soon as it’s ready."
+          );
+          clearPolling();
+          void pollDocumentStatus(newlyCreatedId);
+        }
         setSelectedFileName("");
         if (fileInputRef.current) {
           fileInputRef.current.value = "";
@@ -122,7 +195,12 @@ export default function DashboardPage() {
 
       if (response.ok) {
         // Remove the document from the list immediately
-        setDocuments(documents.filter((doc) => doc.id !== documentId));
+        setDocuments((prev) => prev.filter((doc) => doc.id !== documentId));
+        if (pendingDocumentId === documentId) {
+          setPendingDocumentId(null);
+          setProcessingStatus("");
+          clearPolling();
+        }
         alert("Document deleted successfully");
       } else {
         const errorData = await response.json();
@@ -208,17 +286,20 @@ export default function DashboardPage() {
             </p>
           </header>
 
-          <section className="mb-14">
-            <Card className="bg-white/10 backdrop-blur-2xl border border-white/20 shadow-2xl p-8 text-white">
+          <section className="mb-14 grid gap-8 lg:grid-cols-[minmax(0,320px)_1fr] lg:items-start">
+            <Card className="border border-white/20 bg-white/10 p-6 text-white backdrop-blur-2xl shadow-2xl">
               <CardHeader className="px-0 pt-0">
-                <CardTitle className="flex items-center gap-3 text-white text-2xl">
-                  <span className="p-3 rounded-xl bg-white/20">
-                    <Upload className="w-6 h-6" />
+                <CardTitle className="flex items-center gap-3 text-white text-xl">
+                  <span className="rounded-xl bg-white/20 p-2.5">
+                    <Upload className="h-5 w-5" />
                   </span>
-                  Upload Document (PDF or DOCX)
+                  Upload Study Materials
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-0">
+                <p className="text-sm text-white/70">
+                  Supports PDF and DOCX. We’ll generate summaries, notes, and quizzes right away.
+                </p>
                 <div
                   onDragOver={(e) => {
                     e.preventDefault();
@@ -228,10 +309,10 @@ export default function DashboardPage() {
                   }}
                   onDragLeave={() => setIsDragging(false)}
                   onDrop={handleDrop}
-                  className={`relative flex flex-col items-center justify-center gap-6 rounded-3xl border-2 border-dashed p-12 text-center transition-all ${
+                  className={`mt-5 flex flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-all ${
                     isDragging
                       ? "border-white bg-white/10"
-                      : "border-white/30 hover:border-white/50"
+                      : "border-white/25 hover:border-white/45"
                   }`}
                 >
                   <input
@@ -242,125 +323,122 @@ export default function DashboardPage() {
                     disabled={uploading}
                     className="hidden"
                   />
-                  <div className="rounded-full bg-white/20 p-6">
-                    <Upload className="w-10 h-10" />
+                  <div className="rounded-full bg-white/20 p-4">
+                    <Upload className="h-8 w-8" />
                   </div>
-                  <div className="space-y-2">
-                    <p className="text-2xl font-medium text-white">
-                      Drag & drop your file here
+                  <div className="space-y-1">
+                    <p className="text-lg font-medium text-white">
+                      Drag your file here
                     </p>
-                    <p className="text-sm text-white/70">
-                      Supports PDF and DOCX. We’ll generate study-ready
-                      materials instantly.
-                    </p>
+                    <p className="text-sm text-white/70">or click the button to browse</p>
                     {selectedFileName && (
-                      <p className="text-sm text-white/80">
-                        Selected: {selectedFileName}
+                      <p className="text-xs text-white/80">
+                        Selected file: {selectedFileName}
                       </p>
                     )}
                   </div>
-                  <div className="flex flex-wrap items-center justify-center gap-3">
-                    <Button
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploading}
-                      className="rounded-xl border border-white/30 bg-white/20 px-6 py-3 text-white transition hover:bg-white/30 disabled:opacity-50"
-                    >
-                      {uploading ? "Uploading..." : "Browse Files"}
-                    </Button>
-                  </div>
+                  <Button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="rounded-lg border border-white/25 bg-white/20 px-5 py-2.5 text-white transition hover:bg-white/30 disabled:opacity-50"
+                  >
+                    {uploading ? "Uploading..." : "Choose File"}
+                  </Button>
                   {error && (
-                    <p className="absolute -bottom-10 text-sm text-red-200">
-                      {error}
-                    </p>
+                    <p className="text-xs text-red-200">{error}</p>
+                  )}
+                  {processingStatus && (
+                    <p className="text-xs text-white/70">{processingStatus}</p>
                   )}
                 </div>
               </CardContent>
             </Card>
-          </section>
 
-          <section>
-            <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
-              <div>
-                <h2 className="text-3xl font-semibold">My Documents</h2>
-                <p className="text-white/60">
-                  Access summaries, flashcards, quizzes, and more for each
-                  upload.
-                </p>
+            <div className="space-y-6">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-3xl font-semibold">My Documents</h2>
+                  <p className="text-white/60">
+                    Every upload comes with its own study workspace.
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-white/20 bg-white/10 px-5 py-3 text-white/80 backdrop-blur-xl">
+                  {loading
+                    ? "Loading..."
+                    : `${documents.length} document${documents.length === 1 ? "" : "s"} ready`}
+                </div>
               </div>
-              <div className="rounded-2xl border border-white/20 bg-white/10 px-5 py-3 backdrop-blur-xl text-white/80">
-                {loading
-                  ? "Loading..."
-                  : `${documents.length} ${
-                      documents.length === 1 ? "document" : "documents"
-                    } ready`}
-              </div>
-            </div>
 
-            {loading ? (
-              <Card className="bg-white/10 backdrop-blur-xl border border-white/20 py-16 text-center text-white/80">
-                <p>Fetching your study materials...</p>
-              </Card>
-            ) : documents.length === 0 ? (
-              <Card className="bg-white/10 backdrop-blur-xl border border-white/20 py-16 text-center text-white/80">
-                <p>No documents yet. Upload your first file to get started!</p>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {documents.map((doc) => (
-                  <Card
-                    key={doc.id}
-                    className="group relative overflow-hidden border border-white/20 bg-white/10 backdrop-blur-xl transition hover:border-white/40 hover:bg-white/20"
-                  >
-                    <CardContent className="p-6">
-                      <Link href={`/documents/${doc.id}`} className="block">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <p className="text-sm text-white/60">
-                              {doc.fileType.toUpperCase()}
-                            </p>
-                            <h3 className="mt-2 text-xl font-semibold text-white line-clamp-2">
-                              {doc.fileName}
-                            </h3>
+              {loading ? (
+                <Card className="border border-white/20 bg-white/10 py-12 text-center text-white/80 backdrop-blur-xl">
+                  <p>Fetching your study materials...</p>
+                </Card>
+              ) : documents.length === 0 ? (
+                <Card className="border border-white/20 bg-white/10 py-12 text-center text-white/80 backdrop-blur-xl">
+                  <p>No documents yet. Upload a file to start learning!</p>
+                </Card>
+              ) : (
+                <div className="space-y-4">
+                  {documents.map((doc) => (
+                    <Card
+                      key={doc.id}
+                      className="border border-white/15 bg-white/10 backdrop-blur-xl transition hover:border-white/30 hover:bg-white/16"
+                    >
+                      <CardContent className="p-5">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="space-y-3">
+                            <Link
+                              href={`/documents/${doc.id}`}
+                              className="group block"
+                            >
+                              <div className="flex items-center gap-3">
+                                <span className="rounded-lg border border-white/25 bg-white/10 px-2 py-1 text-xs font-medium text-white/70">
+                                  {doc.fileType.toUpperCase()}
+                                </span>
+                                <span className="text-sm text-white/60">
+                                  Updated{" "}
+                                  {new Date(doc.uploadedAt).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <h3 className="mt-2 text-xl font-semibold text-white">
+                                {doc.fileName}
+                              </h3>
+                              <p className="mt-2 inline-flex items-center gap-2 text-sm text-white/60 transition group-hover:text-white/80">
+                                Open study workspace <span aria-hidden>→</span>
+                              </p>
+                            </Link>
                           </div>
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-medium uppercase tracking-wide ${
-                              doc.status === "completed"
-                                ? "bg-emerald-400/20 text-emerald-100"
-                                : doc.status === "processing"
-                                ? "bg-yellow-300/25 text-yellow-100"
-                                : "bg-red-400/25 text-red-100"
-                            }`}
-                          >
-                            {doc.status}
-                          </span>
+                          <div className="flex flex-col items-start gap-3 sm:items-end">
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-medium uppercase tracking-wide ${
+                                doc.status === "completed"
+                                  ? "bg-emerald-400/20 text-emerald-100"
+                                  : doc.status === "processing"
+                                  ? "bg-yellow-300/25 text-yellow-100"
+                                  : "bg-red-400/25 text-red-100"
+                              }`}
+                            >
+                              {doc.status}
+                            </span>
+                            <Button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleDelete(doc.id, doc.fileName);
+                              }}
+                              disabled={deleting === doc.id}
+                              className="w-full rounded-lg border border-white/25 bg-white/15 px-4 py-2 text-sm text-white hover:bg-white/25 disabled:opacity-60 sm:w-auto"
+                            >
+                              {deleting === doc.id ? "Deleting..." : "Delete"}
+                            </Button>
+                          </div>
                         </div>
-                        <div className="mt-6 flex items-center justify-between text-sm text-white/70">
-                          <span>
-                            Updated{" "}
-                            {new Date(doc.uploadedAt).toLocaleDateString()}
-                          </span>
-                          <span className="hidden sm:inline-flex items-center gap-2 opacity-0 transition group-hover:opacity-100">
-                            <span>Open workspace</span>
-                            <span aria-hidden>→</span>
-                          </span>
-                        </div>
-                      </Link>
-                      <Button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleDelete(doc.id, doc.fileName);
-                        }}
-                        disabled={deleting === doc.id}
-                        className="mt-6 w-full rounded-xl border border-white/30 bg-white/15 text-white hover:bg-white/25 disabled:opacity-60"
-                      >
-                        {deleting === doc.id ? "Deleting..." : "Delete"}
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
           </section>
         </main>
       </div>
