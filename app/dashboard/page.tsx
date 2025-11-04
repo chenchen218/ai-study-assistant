@@ -121,6 +121,12 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-gray-700">Welcome, {user?.name}</span>
+              <Link
+                href="/analytics"
+                className="text-indigo-600 hover:text-indigo-800 font-medium"
+              >
+                Analytics
+              </Link>
               {user?.role === "admin" && (
                 <Link
                   href="/admin"
