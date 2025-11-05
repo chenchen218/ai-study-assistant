@@ -1,12 +1,17 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import type { ChangeEvent, DragEvent } from "react";
+import type { ChangeEvent, DragEvent, MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../providers/AuthProvider";
 import Link from "next/link";
 import { Button } from "../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import { BookOpen, Upload } from "lucide-react";
 
 interface Document {
@@ -298,7 +303,8 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent className="px-0">
                 <p className="text-sm text-white/70">
-                  Supports PDF and DOCX. We’ll generate summaries, notes, and quizzes right away.
+                  Supports PDF and DOCX. We’ll generate summaries, notes, and
+                  quizzes right away.
                 </p>
                 <div
                   onDragOver={(e) => {
@@ -330,7 +336,9 @@ export default function DashboardPage() {
                     <p className="text-lg font-medium text-white">
                       Drag your file here
                     </p>
-                    <p className="text-sm text-white/70">or click the button to browse</p>
+                    <p className="text-sm text-white/70">
+                      or click the button to browse
+                    </p>
                     {selectedFileName && (
                       <p className="text-xs text-white/80">
                         Selected file: {selectedFileName}
@@ -344,9 +352,7 @@ export default function DashboardPage() {
                   >
                     {uploading ? "Uploading..." : "Choose File"}
                   </Button>
-                  {error && (
-                    <p className="text-xs text-red-200">{error}</p>
-                  )}
+                  {error && <p className="text-xs text-red-200">{error}</p>}
                   {processingStatus && (
                     <p className="text-xs text-white/70">{processingStatus}</p>
                   )}
@@ -365,7 +371,9 @@ export default function DashboardPage() {
                 <div className="rounded-2xl border border-white/20 bg-white/10 px-5 py-3 text-white/80 backdrop-blur-xl">
                   {loading
                     ? "Loading..."
-                    : `${documents.length} document${documents.length === 1 ? "" : "s"} ready`}
+                    : `${documents.length} document${
+                        documents.length === 1 ? "" : "s"
+                      } ready`}
                 </div>
               </div>
 
@@ -397,7 +405,9 @@ export default function DashboardPage() {
                                 </span>
                                 <span className="text-sm text-white/60">
                                   Updated{" "}
-                                  {new Date(doc.uploadedAt).toLocaleDateString()}
+                                  {new Date(
+                                    doc.uploadedAt
+                                  ).toLocaleDateString()}
                                 </span>
                               </div>
                               <h3 className="mt-2 text-xl font-semibold text-white">
@@ -421,7 +431,7 @@ export default function DashboardPage() {
                               {doc.status}
                             </span>
                             <Button
-                              onClick={(e) => {
+                              onClick={(e: MouseEvent<HTMLButtonElement>) => {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 handleDelete(doc.id, doc.fileName);

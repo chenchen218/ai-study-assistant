@@ -127,9 +127,8 @@ export default function DocumentPage() {
   const [activeTab, setActiveTab] = useState<TabId>("summary");
   const [currentFlashcard, setCurrentFlashcard] = useState(0);
   const [isFlashcardFlipped, setIsFlashcardFlipped] = useState(false);
-  const [flashcardFeedbackLoading, setFlashcardFeedbackLoading] = useState(
-    false
-  );
+  const [flashcardFeedbackLoading, setFlashcardFeedbackLoading] =
+    useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [quizSelectedAnswer, setQuizSelectedAnswer] = useState<number | null>(
     null
@@ -191,7 +190,10 @@ export default function DocumentPage() {
 
     const endSession = async () => {
       if (!sessionId || !startTime) return;
-      const duration = Math.max(1, Math.floor((Date.now() - startTime) / 60000));
+      const duration = Math.max(
+        1,
+        Math.floor((Date.now() - startTime) / 60000)
+      );
       try {
         await fetch("/api/analytics/sessions", {
           method: "POST",
@@ -291,11 +293,7 @@ export default function DocumentPage() {
   const currentQuestion = quizQuestions[currentQuestionIndex];
 
   const handleSubmitAnswer = async () => {
-    if (
-      quizSelectedAnswer === null ||
-      !currentQuestion ||
-      quizShowResult
-    ) {
+    if (quizSelectedAnswer === null || !currentQuestion || quizShowResult) {
       return;
     }
     setQuizShowResult(true);
@@ -370,7 +368,8 @@ export default function DocumentPage() {
         const aiMessage: QAMessage = {
           id: `ai-${Date.now()}`,
           type: "ai",
-          content: qaResponse.answer || "I wasn't able to find an answer just yet.",
+          content:
+            qaResponse.answer || "I wasn't able to find an answer just yet.",
           timestamp: new Date().toISOString(),
         };
         setQaMessages((prev) => [...prev, aiMessage]);
@@ -505,7 +504,9 @@ export default function DocumentPage() {
                   <div className="rounded-xl bg-gradient-to-br from-purple-50 to-pink-100 p-3">
                     <Sparkles className="h-6 w-6 text-[#1C1C1C]" />
                   </div>
-                  <h3 className="text-2xl font-semibold">AI Generated Summary</h3>
+                  <h3 className="text-2xl font-semibold">
+                    AI Generated Summary
+                  </h3>
                 </div>
                 {data.summary ? (
                   <div className="space-y-6">
@@ -596,7 +597,9 @@ export default function DocumentPage() {
                             className="absolute inset-0 flex flex-col items-center justify-center rounded-3xl bg-gradient-to-br from-purple-300/75 to-pink-300/75 text-center text-white backdrop-blur-xl"
                             style={{ backfaceVisibility: "hidden" }}
                           >
-                            <p className="mb-4 text-sm text-white/80">Question</p>
+                            <p className="mb-4 text-sm text-white/80">
+                              Question
+                            </p>
                             <p className="text-2xl font-medium text-white">
                               {data.flashcards[currentFlashcard].question}
                             </p>
@@ -769,26 +772,27 @@ export default function DocumentPage() {
                             })}
                           </div>
 
-                          {quizShowResult &&
-                            currentQuestion.explanation && (
-                              <div className="rounded-2xl border border-white/20 bg-white/10 p-4 text-sm text-[#1C1C1C]">
-                                {currentQuestion.explanation}
-                              </div>
-                            )}
+                          {quizShowResult && currentQuestion.explanation && (
+                            <div className="rounded-2xl border border-white/20 bg-white/10 p-4 text-sm text-[#1C1C1C]">
+                              {currentQuestion.explanation}
+                            </div>
+                          )}
 
                           <div className="flex flex-wrap justify-end gap-3">
                             {!quizShowResult ? (
                               <Button
-                                onClick={() => void handleSubmitAnswer()}
+                                onClick={async () => {
+                                  await handleSubmitAnswer();
+                                }}
                                 disabled={quizSelectedAnswer === null}
-                                className="rounded-xl border border-white/30 bg-white/20 px-6 py-3 text-white hover:bg-white/30 disabled:opacity-60"
+                                className="rounded-xl border border-white/40 bg-white/80 px-6 py-3 text-black hover:bg-white/90 shadow-lg disabled:opacity-60"
                               >
                                 Submit answer
                               </Button>
                             ) : (
                               <Button
                                 onClick={handleNextQuestion}
-                                className="rounded-xl border border-white/30 bg-white/20 px-6 py-3 text-white hover:bg-white/30"
+                                className="rounded-xl border border-white/40 bg-white/80 px-6 py-3 text-black hover:bg-white/90 shadow-lg"
                               >
                                 {currentQuestionIndex < quizQuestions.length - 1
                                   ? "Next question"
@@ -815,9 +819,7 @@ export default function DocumentPage() {
                           {quizScore} / {quizQuestions.length}
                         </p>
                         <p className="mt-2 text-[#1C1C1C]">
-                          {Math.round(
-                            (quizScore / quizQuestions.length) * 100
-                          )}
+                          {Math.round((quizScore / quizQuestions.length) * 100)}
                           % correct
                         </p>
                       </div>
@@ -847,7 +849,10 @@ export default function DocumentPage() {
                   <h3 className="text-2xl font-semibold">Ask the AI Tutor</h3>
                 </div>
 
-                <ScrollArea ref={qaScrollRef} className="h-96 rounded-2xl border border-white/10 bg-white/5 p-4 pr-6">
+                <ScrollArea
+                  ref={qaScrollRef}
+                  className="h-96 rounded-2xl border border-white/10 bg-white/5 p-4 pr-6"
+                >
                   <div className="space-y-4">
                     {qaMessages.map((message) => (
                       <div
@@ -873,10 +878,13 @@ export default function DocumentPage() {
                           )}
                           <p className="text-[#1C1C1C]">{message.content}</p>
                           <p className="mt-2 text-right text-xs text-[#1C1C1C]">
-                            {new Date(message.timestamp).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
+                            {new Date(message.timestamp).toLocaleTimeString(
+                              [],
+                              {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }
+                            )}
                           </p>
                         </div>
                       </div>
@@ -904,7 +912,9 @@ export default function DocumentPage() {
                     disabled={qaLoading}
                   />
                   <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-[#1C1C1C]">
-                    <span>Press Enter to send, Shift + Enter for a new line</span>
+                    <span>
+                      Press Enter to send, Shift + Enter for a new line
+                    </span>
                     <Button
                       type="submit"
                       disabled={!question.trim() || qaLoading}
