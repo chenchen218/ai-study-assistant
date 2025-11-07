@@ -424,6 +424,13 @@ export default function DocumentPage() {
             <Card className="border border-white/20 bg-white/10 p-4 text-white shadow-xl backdrop-blur-xl">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
+                  <Button
+                    onClick={() => router.push("/dashboard")}
+                    variant="ghost"
+                    className="rounded-lg border border-white/30 bg-white/20 px-3 py-2 text-[#1C1C1C] transition-all hover:bg-white/30 backdrop-blur-sm"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
                   <div className="rounded-lg bg-white/20 p-2">
                     <Upload className="w-5 h-5 text-[#1C1C1C]" />
                   </div>
@@ -918,7 +925,7 @@ export default function DocumentPage() {
                     <Button
                       type="submit"
                       disabled={!question.trim() || qaLoading}
-                      className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/20 px-6 py-3 text-white hover:bg-white/30 disabled:opacity-60"
+                      className="inline-flex items-center gap-2 rounded-xl border border-white/40 bg-white/80 px-6 py-3 text-black hover:bg-white/90 disabled:opacity-60 shadow-lg"
                     >
                       <Send className="h-5 w-5" />
                       {qaLoading ? "Sending..." : "Send"}
