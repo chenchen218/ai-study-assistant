@@ -84,8 +84,27 @@ export async function POST(request: NextRequest) {
       status: "processing",
     });
 
-    // Generate AI content asynchronously
-    Promise.all([
+    // Check if GEMINI_API_KEY is configured
+    if (!process.env.GEMINI_API_KEY) {
+      console.error("❌ GEMINI_API_KEY is not set in environment variables");
+      document.status = "failed";
+      await document.save();
+      return NextResponse.json(
+        {
+          message: "File uploaded successfully",
+          document: {
+            id: document._id,
+            fileName: document.fileName,
+            status: document.status,
+          },
+          warning: "AI processing failed: GEMINI_API_KEY not configured",
+        },
+        { status: 201 }
+      );
+    }
+
+    // Generate AI content asynchronously with Promise.allSettled for resilience
+    Promise.allSettled([
       generateSummary(truncatedText)
         .then(async (summaryContent) => {
           if (summaryContent && summaryContent.trim()) {
@@ -173,23 +192,45 @@ export async function POST(request: NextRequest) {
           );
           throw err;
         }),
-    ])
-      .then(async () => {
-        console.log("✅ All AI content generated successfully");
-        document.status = "completed";
-        await document.save();
-      })
-      .catch(async (error) => {
-        console.error("❌ Error generating AI content:", error);
-        console.error("Error message:", error?.message);
-        console.error("Error name:", error?.name);
-        console.error("Error stack:", error?.stack);
-        if (error?.response) {
-          console.error("Error response:", error.response);
+    ]).then(async (results) => {
+      const successes = results.filter((r) => r.status === "fulfilled").length;
+      const failures = results.filter((r) => r.status === "rejected").length;
+
+      console.log(
+        `✅ AI content generation completed: ${successes} succeeded, ${failures} failed`
+      );
+
+      // Log detailed errors for failed operations
+      results.forEach((result, index) => {
+        if (result.status === "rejected") {
+          const operationNames = [
+            "Summary",
+            "Notes",
+            "Flashcards",
+            "Quiz Questions",
+          ];
+          console.error(
+            `❌ ${operationNames[index]} generation failed:`,
+            result.reason?.message || result.reason
+          );
         }
-        document.status = "failed";
-        await document.save();
       });
+
+      // Mark as completed if at least one operation succeeded
+      // Otherwise mark as failed
+      if (successes > 0) {
+        document.status = "completed";
+        console.log(
+          `✅ Document marked as completed (${successes}/${results.length} operations succeeded)`
+        );
+      } else {
+        document.status = "failed";
+        console.error(
+          "❌ All AI content generation failed. Document marked as failed."
+        );
+      }
+      await document.save();
+    });
 
     return NextResponse.json(
       {
