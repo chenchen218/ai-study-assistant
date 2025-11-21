@@ -8,11 +8,47 @@ if (!apiKey) {
 
 const genAI = new GoogleGenerativeAI(apiKey);
 
-// Use models/gemini-2.5-flash-preview-05-20 - confirmed working model
-// This model supports generateContent and is available with the API key
-const model = genAI.getGenerativeModel({
-  model: "models/gemini-2.5-flash-preview-05-20",
-});
+// Try multiple models in order of preference
+// Cache the working model to avoid repeated API calls
+let cachedWorkingModel: string | null = null;
+
+const getModel = async (): Promise<any> => {
+  // If we have a cached working model, use it
+  if (cachedWorkingModel) {
+    return genAI.getGenerativeModel({ model: cachedWorkingModel });
+  }
+
+  // Try models in order: latest stable, then alternatives
+  const modelsToTry = [
+    "models/gemini-2.5-flash-preview-05-20", // What test endpoint found
+    "models/gemini-2.5-flash", // Stable version
+    "models/gemini-2.0-flash-exp", // Experimental but available
+    "models/gemini-flash-latest", // Latest alias
+    "models/gemini-2.0-flash", // Alternative
+  ];
+
+  // Try each model until one works
+  for (const modelName of modelsToTry) {
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      // Test if it works with a simple call
+      const testResult = await model.generateContent("test");
+      await testResult.response;
+      // If we get here, the model works
+      cachedWorkingModel = modelName;
+      console.log(`✅ Using working model: ${modelName}`);
+      return model;
+    } catch (err: any) {
+      // Try next model
+      continue;
+    }
+  }
+
+  // If all models fail, throw an error
+  throw new Error(
+    "No working Gemini model found. Please check your API key and model availability."
+  );
+};
 
 export async function generateSummary(content: string): Promise<string> {
   const prompt = `You are an expert at creating concise, comprehensive summaries of educational content. Create a well-structured summary that captures all key concepts and main points.
@@ -25,6 +61,7 @@ ${content}`;
     if (!apiKey) {
       throw new Error("GEMINI_API_KEY is not configured");
     }
+    const model = await getModel();
     const result = await model.generateContent(prompt);
     const response = await result.response;
     return response.text() || "";
@@ -46,6 +83,7 @@ ${content}`;
     if (!apiKey) {
       throw new Error("GEMINI_API_KEY is not configured");
     }
+    const model = await getModel();
     const result = await model.generateContent(prompt);
     const response = await result.response;
     return response.text() || "";
@@ -78,6 +116,7 @@ ${content}`;
     if (!apiKey) {
       throw new Error("GEMINI_API_KEY is not configured");
     }
+    const model = await getModel();
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
@@ -161,6 +200,7 @@ ${content}`;
     if (!apiKey) {
       throw new Error("GEMINI_API_KEY is not configured");
     }
+    const model = await getModel();
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
@@ -208,6 +248,7 @@ ${content}
 Question: ${question}`;
 
   try {
+    const model = await getModel();
     const result = await model.generateContent(prompt);
     const response = await result.response;
     return (

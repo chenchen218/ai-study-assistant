@@ -917,6 +917,7 @@ export default function DocumentPage() {
                     onKeyDown={handleQuestionKeyDown}
                     placeholder="Ask a question about this document..."
                     disabled={qaLoading}
+                    className="text-[#1C1C1C] placeholder:text-[#1C1C1C]/60"
                   />
                   <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-[#1C1C1C]">
                     <span>
