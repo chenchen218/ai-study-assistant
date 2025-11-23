@@ -45,16 +45,27 @@ export default function AdminDashboard() {
     fetchAdminData();
   }, [user, router]);
 
+  /**
+   * Fetches admin statistics and recent documents
+   * @throws {Error} If the API request fails
+   */
   const fetchAdminData = async () => {
     try {
       const response = await fetch("/api/admin/stats");
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data.stats);
-        setRecentDocuments(data.recentDocuments);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          error: `HTTP ${response.status}: ${response.statusText}`,
+        }));
+        throw new Error(errorData.error || `Failed to load admin data: ${response.statusText}`);
       }
+
+      const data = await response.json();
+      setStats(data.stats);
+      setRecentDocuments(data.recentDocuments);
     } catch (error) {
       console.error("Error fetching admin data:", error);
+      // Could add toast notification here for admin errors
     } finally {
       setLoading(false);
     }

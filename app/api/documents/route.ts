@@ -15,8 +15,15 @@ import { Summary } from "@/models/Summary";
 import { Note } from "@/models/Note";
 import { Flashcard } from "@/models/Flashcard";
 import { QuizQuestion } from "@/models/QuizQuestion";
+import { rateLimiters } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
+  // Apply rate limiting
+  const rateLimitResponse = rateLimiters.documents(request);
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
   try {
     await connectDB();
 

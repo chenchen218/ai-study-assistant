@@ -23,6 +23,12 @@ if (!global.mongoose) {
   global.mongoose = cached;
 }
 
+/**
+ * Connects to MongoDB database with connection caching for serverless environments
+ * Uses global cache to prevent multiple connections in development
+ * @returns Promise resolving to mongoose connection instance
+ * @throws {Error} If MongoDB connection fails or MONGODB_URI is not set
+ */
 async function connectDB(): Promise<typeof mongoose> {
   if (cached.conn) {
     return cached.conn;

@@ -27,6 +27,12 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/**
+ * React hook to access authentication context
+ * Must be used within AuthProvider component
+ * @returns Authentication context with user, loading state, and auth methods
+ * @throws {Error} If used outside of AuthProvider
+ */
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
@@ -35,6 +41,15 @@ export function useAuth() {
   return context;
 }
 
+/**
+ * Authentication provider component that manages user authentication state
+ * Provides authentication context to all child components
+ * Features:
+ * - Automatic auth check on mount
+ * - Login/register/logout functionality
+ * - User state management
+ * - Protected route handling
+ */
 export default function AuthProvider({
   children,
 }: {
@@ -80,46 +95,100 @@ export default function AuthProvider({
     };
   }, []);
 
+  /**
+   * Logs in a user with email and password
+   * @param email - User's email address
+   * @param password - User's password
+   * @returns Promise with success status and optional error message
+   * @throws {Error} If the API request fails
+   */
   const login = async (email: string, password: string) => {
-    const response = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-    if (response.ok) {
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          error: `HTTP ${response.status}: ${response.statusText}`,
+        }));
+        return { 
+          success: false, 
+          error: errorData.error || `Login failed: ${response.statusText}` 
+        };
+      }
+
       const data = await response.json();
       setUser(data.user);
       router.push("/dashboard");
       return { success: true };
-    } else {
-      const error = await response.json();
-      return { success: false, error: error.error };
+    } catch (error) {
+      console.error("Login error:", error);
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "Network error. Please check your connection and try again.";
+      return { success: false, error: errorMessage };
     }
   };
 
+  /**
+   * Registers a new user
+   * @param email - User's email address
+   * @param password - User's password (minimum 6 characters)
+   * @param name - User's full name
+   * @returns Promise with success status and optional error message
+   * @throws {Error} If the API request fails
+   */
   const register = async (email: string, password: string, name: string) => {
-    const response = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, name }),
-    });
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, name }),
+      });
 
-    if (response.ok) {
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          error: `HTTP ${response.status}: ${response.statusText}`,
+        }));
+        return { 
+          success: false, 
+          error: errorData.error || `Registration failed: ${response.statusText}` 
+        };
+      }
+
       const data = await response.json();
       setUser(data.user);
       router.push("/dashboard");
       return { success: true };
-    } else {
-      const error = await response.json();
-      return { success: false, error: error.error };
+    } catch (error) {
+      console.error("Registration error:", error);
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "Network error. Please check your connection and try again.";
+      return { success: false, error: errorMessage };
     }
   };
 
+  /**
+   * Logs out the current user
+   * @throws {Error} If the logout request fails (non-blocking)
+   */
   const logout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    setUser(null);
-    router.push("/");
+    try {
+      const response = await fetch("/api/auth/logout", { method: "POST" });
+      if (!response.ok) {
+        console.warn("Logout API call failed, but continuing with local logout");
+      }
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Continue with logout even if API call fails
+    } finally {
+      setUser(null);
+      router.push("/");
+    }
   };
 
   return (

@@ -60,15 +60,27 @@ export default function AnalyticsPage() {
       router.push("/login");
       return;
     }
+    /**
+     * Fetches analytics data for the selected time period
+     * @throws {Error} If the API request fails
+     */
     const fetchData = async () => {
       try {
         const response = await fetch(`/api/analytics?period=${period}`);
-        if (response.ok) {
-          const analyticsData = await response.json();
-          setData(analyticsData);
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({
+            error: `HTTP ${response.status}: ${response.statusText}`,
+          }));
+          throw new Error(errorData.error || `Failed to load analytics: ${response.statusText}`);
         }
+
+        const analyticsData = await response.json();
+        setData(analyticsData);
       } catch (error) {
         console.error("Error fetching analytics:", error);
+        // Analytics errors are non-critical, just log them
+        // Could add a toast notification here if needed
       } finally {
         setLoading(false);
       }

@@ -6,8 +6,15 @@ import { answerQuestion } from "@/lib/ai";
 import pdfParse from "pdf-parse";
 import mammoth from "mammoth";
 import { getUserIdFromRequest } from "@/lib/auth";
+import { rateLimiters } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
+  // Apply rate limiting
+  const rateLimitResponse = rateLimiters.qa(request);
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
   try {
     await connectDB();
 

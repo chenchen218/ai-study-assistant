@@ -10,6 +10,14 @@ const s3 = new AWS.S3({
 const BUCKET_NAME =
   process.env.AWS_S3_BUCKET_NAME || "ai-study-assistant-documents";
 
+/**
+ * Uploads a file to AWS S3 bucket
+ * @param file - File buffer to upload
+ * @param fileName - Original file name (will be prefixed with UUID)
+ * @param contentType - MIME type of the file (e.g., "application/pdf")
+ * @returns Promise resolving to object with S3 key and signed URL (valid for 7 days)
+ * @throws {Error} If S3 upload fails
+ */
 export async function uploadToS3(
   file: Buffer,
   fileName: string,
@@ -36,6 +44,12 @@ export async function uploadToS3(
   return { key, url };
 }
 
+/**
+ * Retrieves a file from AWS S3 bucket
+ * @param key - S3 object key (path) of the file to retrieve
+ * @returns Promise resolving to file buffer
+ * @throws {Error} If file retrieval fails or file doesn't exist
+ */
 export async function getFileFromS3(key: string): Promise<Buffer> {
   const params: AWS.S3.GetObjectRequest = {
     Bucket: BUCKET_NAME,
@@ -46,6 +60,12 @@ export async function getFileFromS3(key: string): Promise<Buffer> {
   return data.Body as Buffer;
 }
 
+/**
+ * Deletes a file from AWS S3 bucket
+ * @param key - S3 object key (path) of the file to delete
+ * @returns Promise that resolves when deletion is complete
+ * @throws {Error} If deletion fails
+ */
 export async function deleteFromS3(key: string): Promise<void> {
   const params: AWS.S3.DeleteObjectRequest = {
     Bucket: BUCKET_NAME,

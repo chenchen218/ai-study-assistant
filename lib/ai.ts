@@ -12,6 +12,12 @@ const genAI = new GoogleGenerativeAI(apiKey);
 // Cache the working model to avoid repeated API calls
 let cachedWorkingModel: string | null = null;
 
+/**
+ * Gets a working Gemini AI model by trying multiple model names in order
+ * Caches the working model to avoid repeated API calls
+ * @returns Promise resolving to a configured Gemini model instance
+ * @throws {Error} If no working model is found after trying all options
+ */
 const getModel = async (): Promise<any> => {
   // If we have a cached working model, use it
   if (cachedWorkingModel) {
@@ -50,6 +56,12 @@ const getModel = async (): Promise<any> => {
   );
 };
 
+/**
+ * Generates a comprehensive summary of educational content using AI
+ * @param content - The text content to summarize (should be under 10,000 characters)
+ * @returns Promise resolving to the generated summary text
+ * @throws {Error} If API key is missing or AI generation fails
+ */
 export async function generateSummary(content: string): Promise<string> {
   const prompt = `You are an expert at creating concise, comprehensive summaries of educational content. Create a well-structured summary that captures all key concepts and main points.
 
@@ -72,6 +84,13 @@ ${content}`;
   }
 }
 
+/**
+ * Generates detailed study notes from educational content using AI
+ * Notes are organized with headings, bullet points, and key concepts
+ * @param content - The text content to create notes from (should be under 10,000 characters)
+ * @returns Promise resolving to markdown-formatted study notes
+ * @throws {Error} If API key is missing or AI generation fails
+ */
 export async function generateNotes(content: string): Promise<string> {
   const prompt = `You are an expert at creating detailed study notes. Organize the content into clear sections with headings, bullet points, and key concepts highlighted. Use markdown formatting for structure.
 
@@ -94,6 +113,13 @@ ${content}`;
   }
 }
 
+/**
+ * Generates flashcards from educational content using AI
+ * @param content - The text content to create flashcards from (should be under 10,000 characters)
+ * @param count - Number of flashcards to generate (default: 10)
+ * @returns Promise resolving to an array of flashcard objects with question and answer
+ * @throws {Error} If API key is missing or AI generation fails (returns empty array on parse errors)
+ */
 export async function generateFlashcards(
   content: string,
   count: number = 10
@@ -159,6 +185,13 @@ ${content}`;
   }
 }
 
+/**
+ * Generates multiple-choice quiz questions from educational content using AI
+ * @param content - The text content to create questions from (should be under 10,000 characters)
+ * @param count - Number of questions to generate (default: 5)
+ * @returns Promise resolving to an array of quiz question objects
+ * @throws {Error} If API key is missing or AI generation fails (returns empty array on parse errors)
+ */
 export async function generateQuizQuestions(
   content: string,
   count: number = 5
@@ -234,6 +267,13 @@ ${content}`;
   }
 }
 
+/**
+ * Answers a user's question about document content using AI
+ * @param content - The document content to use as context
+ * @param question - The user's question to answer
+ * @returns Promise resolving to the AI-generated answer
+ * @throws {Error} If AI generation fails (returns fallback message)
+ */
 export async function answerQuestion(
   content: string,
   question: string
@@ -260,6 +300,12 @@ Question: ${question}`;
   }
 }
 
+/**
+ * Placeholder function for text extraction from file content
+ * In production, this would use pdf-parse or mammoth to extract text from uploaded files
+ * @param content - The content to extract text from
+ * @returns Promise resolving to the extracted text (currently returns content as-is)
+ */
 export async function extractTextFromContent(content: string): Promise<string> {
   // This is a placeholder - in production, you'd use pdf-parse or mammoth
   // to extract text from uploaded files
