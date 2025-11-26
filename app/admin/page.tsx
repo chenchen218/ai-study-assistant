@@ -27,13 +27,16 @@ interface RecentDocument {
 }
 
 export default function AdminDashboard() {
-  const { user, logout } = useAuth();
+  const { user, logout, loading: authLoading } = useAuth();
   const router = useRouter();
   const [stats, setStats] = useState<Stats | null>(null);
   const [recentDocuments, setRecentDocuments] = useState<RecentDocument[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (authLoading) {
+      return; // Still checking auth, don't do anything yet
+    }
     if (!user) {
       router.push("/login");
       return;

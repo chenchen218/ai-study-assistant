@@ -49,13 +49,16 @@ interface AnalyticsData {
 }
 
 export default function AnalyticsPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<"week" | "month" | "all">("week");
 
   useEffect(() => {
+    if (authLoading) {
+      return; // Still checking auth, don't do anything yet
+    }
     if (!user) {
       router.push("/login");
       return;

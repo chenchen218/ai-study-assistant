@@ -64,7 +64,12 @@ export default function AuthProvider({
 
     const checkAuthWithTimeout = async () => {
       try {
-        const response = await fetch("/api/auth/me");
+        // Add a small delay to ensure cookies are set after OAuth redirect
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        
+        const response = await fetch("/api/auth/me", {
+          credentials: "include", // Ensure cookies are sent
+        });
         if (response.ok) {
           const data = await response.json();
           if (isMounted) setUser(data.user);

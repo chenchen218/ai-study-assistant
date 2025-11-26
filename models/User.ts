@@ -2,9 +2,13 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IUser extends Document {
   email: string;
-  password: string;
+  password?: string;
   name: string;
   role: "user" | "admin";
+  provider?: "local" | "google" | "github";
+  googleId?: string;
+  githubId?: string;
+  picture?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -20,7 +24,9 @@ const UserSchema: Schema = new Schema(
     },
     password: {
       type: String,
-      required: true,
+      required: function(this: IUser) {
+        return this.provider === "local";
+      },
     },
     name: {
       type: String,
@@ -31,6 +37,24 @@ const UserSchema: Schema = new Schema(
       type: String,
       enum: ["user", "admin"],
       default: "user",
+    },
+    provider: {
+      type: String,
+      enum: ["local", "google", "github"],
+      default: "local",
+    },
+    googleId: {
+      type: String,
+      sparse: true,
+      unique: true,
+    },
+    githubId: {
+      type: String,
+      sparse: true,
+      unique: true,
+    },
+    picture: {
+      type: String,
     },
   },
   {
