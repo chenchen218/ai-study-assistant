@@ -18,10 +18,12 @@ const getModel = async (): Promise<any> => {
     return genAI.getGenerativeModel({ model: cachedWorkingModel });
   }
 
-  // Try models in order: latest stable, then alternatives
+  // Try models in order: prioritize cost-effective Flash-Lite, then alternatives
   const modelsToTry = [
-    "models/gemini-2.5-flash-preview-05-20", // What test endpoint found
-    "models/gemini-2.5-flash", // Stable version
+    "models/gemini-2.5-flash-lite", // Cost-effective stable version (5x cheaper)
+    "models/gemini-2.5-flash-lite-preview-06-17", // Cost-effective preview
+    "models/gemini-2.5-flash", // Standard stable version
+    "models/gemini-2.5-flash-preview-05-20", // Standard preview
     "models/gemini-2.0-flash-exp", // Experimental but available
     "models/gemini-flash-latest", // Latest alias
     "models/gemini-2.0-flash", // Alternative

@@ -63,7 +63,18 @@ npm install
    - Go to "Database" → "Connect" → "Connect your application"
    - Copy the connection string
 
-### 3. Configure Environment Variables
+### 3. Set Up Email Service (Optional but Recommended)
+
+For email verification, you'll need a Resend account:
+
+1. Sign up at [Resend](https://resend.com) (free tier available)
+2. Create an API key in the dashboard
+3. Add your domain or use the default `onboarding@resend.dev` for testing
+4. Add the API key to `.env.local` (see below)
+
+**Note:** Without `RESEND_API_KEY`, email verification is disabled. Users can still register, but verification links will be logged to the console in development.
+
+### 4. Configure Environment Variables
 
 Create a `.env.local` file in the root directory:
 
@@ -86,9 +97,34 @@ JWT_SECRET=your-random-secret-key-change-in-production
 
 # Admin Configuration
 ADMIN_EMAIL=admin@example.com
+
+# Email Domain Restrictions (Optional)
+# Comma-separated list of allowed email domains for registration
+# Example: ALLOWED_EMAIL_DOMAINS=university.edu,company.com
+# Leave empty or unset to allow any email domain
+ALLOWED_EMAIL_DOMAINS=
+
+# Email Validation (Optional)
+# MX record validation is ENABLED by default to block fake/random emails
+# Set to "false" to disable (not recommended - allows fake emails)
+# Adds ~100-500ms delay per registration but blocks invalid domains
+ENABLE_MX_VALIDATION=true
+
+# Email Verification (Optional)
+# Set to "false" to disable email verification requirement
+# When disabled, users can register and login immediately without verifying email
+# Default: true (email verification required)
+ENABLE_EMAIL_VERIFICATION=true
+
+# Email Verification (Optional but Recommended for Production)
+# Get your API key from: https://resend.com/api-keys
+RESEND_API_KEY=re_your_resend_api_key_here
+RESEND_FROM_EMAIL=noreply@yourdomain.com
+# Public app URL for verification links (required for email verification)
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-### 4. Set Up AWS S3 (For File Uploads)
+### 5. Set Up AWS S3 (For File Uploads)
 
 1. Create an S3 bucket in AWS Console
 2. Create an IAM user with S3 permissions:
@@ -106,7 +142,7 @@ ADMIN_EMAIL=admin@example.com
    ```
 3. Generate access keys and add to `.env.local`
 
-### 5. Run the Application
+### 6. Run the Application
 
 ```bash
 npm run dev
@@ -119,10 +155,17 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ### First Time Setup
 
 1. **Register**: Create a new account at `/register`
-2. **Login**: Sign in with your credentials
-3. **Upload**: Upload a PDF or DOCX file from the dashboard
-4. **Wait**: Processing happens asynchronously (check status indicator)
-5. **Explore**: Once complete, view summaries, notes, flashcards, and quizzes
+2. **Verify Email**: Check your inbox and click the verification link (required before login)
+3. **Login**: Sign in with your verified credentials
+4. **Upload**: Upload a PDF or DOCX file from the dashboard
+5. **Wait**: Processing happens asynchronously (check status indicator)
+6. **Explore**: Once complete, view summaries, notes, flashcards, and quizzes
+
+**Note:** If you don't receive a verification email:
+
+- Check spam folder
+- Click "Resend Verification Email" on the login page
+- In development without `RESEND_API_KEY`, check the console for the verification link
 
 ### Features
 
@@ -210,21 +253,30 @@ ai-study-assistant/
 - ✅ Files stored securely in S3
 - ✅ Role-based access control (user/admin)
 - ✅ Environment variables for sensitive data
+- ✅ Optional email domain whitelist for registration
+- ✅ Email validation (format, disposable email blocking, optional MX record check)
+- ✅ Email verification (prevents fake accounts, recommended for production)
 
 ## ⚙️ Configuration
 
 ### Environment Variables
 
-| Variable                | Required    | Description                           |
-| ----------------------- | ----------- | ------------------------------------- |
-| `MONGODB_URI`           | ✅ Yes      | MongoDB connection string             |
-| `GEMINI_API_KEY`        | ✅ Yes      | Google Gemini API key for AI features |
-| `AWS_ACCESS_KEY_ID`     | ✅ Yes      | AWS access key for S3                 |
-| `AWS_SECRET_ACCESS_KEY` | ✅ Yes      | AWS secret key for S3                 |
-| `AWS_REGION`            | ✅ Yes      | AWS region (e.g., us-east-1)          |
-| `AWS_S3_BUCKET_NAME`    | ✅ Yes      | S3 bucket name                        |
-| `JWT_SECRET`            | ✅ Yes      | Secret for JWT token signing          |
-| `ADMIN_EMAIL`           | ⚠️ Optional | Email address for admin access        |
+| Variable                    | Required    | Description                                                       |
+| --------------------------- | ----------- | ----------------------------------------------------------------- |
+| `MONGODB_URI`               | ✅ Yes      | MongoDB connection string                                         |
+| `GEMINI_API_KEY`            | ✅ Yes      | Google Gemini API key for AI features                             |
+| `AWS_ACCESS_KEY_ID`         | ✅ Yes      | AWS access key for S3                                             |
+| `AWS_SECRET_ACCESS_KEY`     | ✅ Yes      | AWS secret key for S3                                             |
+| `AWS_REGION`                | ✅ Yes      | AWS region (e.g., us-east-1)                                      |
+| `AWS_S3_BUCKET_NAME`        | ✅ Yes      | S3 bucket name                                                    |
+| `JWT_SECRET`                | ✅ Yes      | Secret for JWT token signing                                      |
+| `ADMIN_EMAIL`               | ⚠️ Optional | Email address for admin access                                    |
+| `ALLOWED_EMAIL_DOMAINS`     | ⚠️ Optional | Comma-separated allowed email domains                             |
+| `ENABLE_MX_VALIDATION`      | ⚠️ Optional | Enable MX validation (default: true, set "false" to disable)      |
+| `ENABLE_EMAIL_VERIFICATION` | ⚠️ Optional | Enable email verification (default: true, set "false" to disable) |
+| `RESEND_API_KEY`            | ⚠️ Optional | Resend API key for email verification                             |
+| `RESEND_FROM_EMAIL`         | ⚠️ Optional | Sender email for verification emails                              |
+| `NEXT_PUBLIC_APP_URL`       | ⚠️ Optional | Public app URL for verification links                             |
 
 ### MongoDB Collections
 

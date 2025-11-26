@@ -19,10 +19,11 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       user: {
-        id: user._id,
+        id: String(user._id),
         email: user.email,
         name: user.name,
         role: user.role,
+        isVerified: user.isVerified,
       },
     });
   } catch (error: any) {

@@ -8,6 +8,7 @@ interface User {
   email: string;
   name: string;
   role: string;
+  isVerified?: boolean;
 }
 
 interface AuthContextType {
@@ -16,12 +17,21 @@ interface AuthContextType {
   login: (
     email: string,
     password: string
-  ) => Promise<{ success: boolean; error?: string }>;
+  ) => Promise<{
+    success: boolean;
+    error?: string;
+    requiresVerification?: boolean;
+  }>;
   register: (
     email: string,
     password: string,
     name: string
-  ) => Promise<{ success: boolean; error?: string }>;
+  ) => Promise<{
+    success: boolean;
+    error?: string;
+    requiresVerification?: boolean;
+    message?: string;
+  }>;
   logout: () => Promise<void>;
 }
 
@@ -94,7 +104,11 @@ export default function AuthProvider({
       return { success: true };
     } else {
       const error = await response.json();
-      return { success: false, error: error.error };
+      return {
+        success: false,
+        error: error.error,
+        requiresVerification: error.requiresVerification,
+      };
     }
   };
 
@@ -107,6 +121,14 @@ export default function AuthProvider({
 
     if (response.ok) {
       const data = await response.json();
+      // Don't automatically log in - user needs to verify email first
+      if (data.requiresVerification) {
+        return {
+          success: true,
+          requiresVerification: true,
+          message: data.message,
+        };
+      }
       setUser(data.user);
       router.push("/dashboard");
       return { success: true };

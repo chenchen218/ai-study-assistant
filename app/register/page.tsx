@@ -11,17 +11,28 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setSuccess("");
     setLoading(true);
 
     const result = await register(email, password, name);
     if (!result.success) {
       setError(result.error || "Registration failed");
+    } else if (result.requiresVerification) {
+      setSuccess(
+        result.message ||
+          "Registration successful! Please check your email to verify your account."
+      );
+      // Clear form
+      setName("");
+      setEmail("");
+      setPassword("");
     }
     setLoading(false);
   };
@@ -39,6 +50,12 @@ export default function RegisterPage() {
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
             {error}
+          </div>
+        )}
+
+        {success && (
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+            {success}
           </div>
         )}
 

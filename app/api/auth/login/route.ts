@@ -35,9 +35,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if email is verified (only if email verification is enabled)
+    const emailVerificationEnabled =
+      process.env.ENABLE_EMAIL_VERIFICATION !== "false";
+    if (emailVerificationEnabled && !user.isVerified) {
+      return NextResponse.json(
+        {
+          error:
+            "Please verify your email before logging in. Check your inbox for the verification link.",
+          requiresVerification: true,
+        },
+        { status: 403 }
+      );
+    }
+
     // Generate token
     const token = generateToken({
-      userId: user._id.toString(),
+      userId: String(user._id),
       email: user.email,
       role: user.role,
     });
@@ -46,10 +60,11 @@ export async function POST(request: NextRequest) {
       {
         message: "Login successful",
         user: {
-          id: user._id,
+          id: String(user._id),
           email: user.email,
           name: user.name,
           role: user.role,
+          isVerified: user.isVerified,
         },
       },
       { status: 200 }
