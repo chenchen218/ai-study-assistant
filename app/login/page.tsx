@@ -6,6 +6,7 @@ import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { GoogleLogin, CredentialResponse } from "@react-oauth/google";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -14,7 +15,7 @@ export default function LoginPage() {
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
-  const { login } = useAuth();
+  const { login, googleLogin } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -80,6 +81,29 @@ export default function LoginPage() {
     } finally {
       setResending(false);
     }
+  };
+
+  const handleGoogleSuccess = async (
+    credentialResponse: CredentialResponse
+  ) => {
+    if (!credentialResponse.credential) {
+      setError("Google login failed: No credential returned");
+      return;
+    }
+
+    setError("");
+    setLoading(true);
+
+    const result = await googleLogin(credentialResponse.credential);
+    if (!result.success) {
+      setError(result.error || "Google login failed");
+    }
+
+    setLoading(false);
+  };
+
+  const handleGoogleError = () => {
+    setError("Google login failed. Please try again.");
   };
 
   return (
@@ -155,6 +179,30 @@ export default function LoginPage() {
             </Button>
           </div>
         )}
+
+        <div className="mt-6">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">
+                Or continue with
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-6 flex justify-center">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+              useOneTap
+              theme="outline"
+              size="large"
+              text="signin_with"
+            />
+          </div>
+        </div>
 
         <p className="mt-4 text-center text-sm text-gray-600">
           Don&apos;t have an account?{" "}

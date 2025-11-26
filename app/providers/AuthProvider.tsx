@@ -22,6 +22,9 @@ interface AuthContextType {
     error?: string;
     requiresVerification?: boolean;
   }>;
+  googleLogin: (
+    idToken: string
+  ) => Promise<{ success: boolean; error?: string }>;
   register: (
     email: string,
     password: string,
@@ -112,6 +115,29 @@ export default function AuthProvider({
     }
   };
 
+  const googleLogin = async (idToken: string) => {
+    try {
+      const response = await fetch("/api/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setUser(data.user);
+        router.push("/dashboard");
+        return { success: true };
+      }
+
+      const error = await response.json();
+      return { success: false, error: error.error };
+    } catch (error) {
+      console.error("Google login error:", error);
+      return { success: false, error: "Google login failed" };
+    }
+  };
+
   const register = async (email: string, password: string, name: string) => {
     const response = await fetch("/api/auth/register", {
       method: "POST",
@@ -145,7 +171,9 @@ export default function AuthProvider({
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{ user, loading, login, googleLogin, register, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -1,8 +1,13 @@
 import jwt from "jsonwebtoken";
 import { NextRequest } from "next/server";
+import { OAuth2Client } from "google-auth-library";
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "your-secret-key-change-in-production";
+
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
+
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 export interface JWTPayload {
   userId: string;
@@ -46,4 +51,33 @@ export function isAdmin(request: NextRequest): boolean {
 
   const payload = verifyToken(token);
   return payload?.role === "admin";
+}
+
+export async function verifyGoogleToken(
+  idToken: string
+): Promise<{
+  email: string;
+  name: string;
+  googleId: string;
+  picture?: string;
+} | null> {
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload) return null;
+
+    return {
+      email: payload.email || "",
+      name: payload.name || "",
+      googleId: payload.sub,
+      picture: payload.picture,
+    };
+  } catch (error) {
+    console.error("Error verifying Google token:", error);
+    return null;
+  }
 }
