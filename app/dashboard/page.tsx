@@ -245,6 +245,14 @@ export default function DashboardPage() {
               <span className="hidden sm:inline text-white/80">
                 Welcome, {user?.name}
               </span>
+              <Link href="/profile">
+                <Button
+                  variant="ghost"
+                  className="text-white hover:bg-white/20 hover:text-white"
+                >
+                  Profile
+                </Button>
+              </Link>
               <Link href="/analytics">
                 <Button
                   variant="ghost"
