@@ -14,13 +14,111 @@ export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sendingCode, setSendingCode] = useState(false);
+  const [verifyingCode, setVerifyingCode] = useState(false);
+  const [codeSent, setCodeSent] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
   const { register } = useAuth();
 
+  /**
+   * Sends verification code to user's email
+   */
+  const handleSendCode = async () => {
+    if (!email) {
+      setError("Please enter your email first");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError("Please enter a valid email address");
+      return;
+    }
+
+    setError("");
+    setSuccess("");
+    setSendingCode(true);
+
+    try {
+      const response = await fetch("/api/auth/send-verification-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Failed to send verification code");
+        setSendingCode(false);
+        return;
+      }
+
+      setSuccess("Verification code sent to your email!");
+      setCodeSent(true);
+      setSendingCode(false);
+    } catch (error: any) {
+      console.error("Error sending verification code:", error);
+      setError("Network error. Please try again.");
+      setSendingCode(false);
+    }
+  };
+
+  /**
+   * Verifies the code entered by user
+   */
+  const handleVerifyCode = async () => {
+    if (!verificationCode || verificationCode.length !== 6) {
+      setError("Please enter a valid 6-digit code");
+      return;
+    }
+
+    setError("");
+    setSuccess("");
+    setVerifyingCode(true);
+
+    try {
+      const response = await fetch("/api/auth/verify-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code: verificationCode }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Invalid verification code");
+        setVerifyingCode(false);
+        return;
+      }
+
+      setSuccess("Email verified successfully!");
+      setEmailVerified(true);
+      setVerifyingCode(false);
+    } catch (error: any) {
+      console.error("Error verifying code:", error);
+      setError("Network error. Please try again.");
+      setVerifyingCode(false);
+    }
+  };
+
+  /**
+   * Handles final registration after email verification
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!emailVerified) {
+      setError("Please verify your email first");
+      return;
+    }
+
     setError("");
+    setSuccess("");
     setLoading(true);
 
     const result = await register(email, password, name);
@@ -49,6 +147,12 @@ export default function RegisterPage() {
             </div>
           )}
 
+          {success && (
+            <div className="bg-green-400/30 border border-green-300/50 text-green-50 px-4 py-3 rounded-lg mb-4 backdrop-blur-sm">
+              {success}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-3">
             <div>
               <label
@@ -74,15 +178,66 @@ export default function RegisterPage() {
               >
                 Email
               </label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="bg-white/20 border-white/30 text-white placeholder:text-white/60 focus:bg-white/30"
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setCodeSent(false);
+                    setEmailVerified(false);
+                  }}
+                  required
+                  disabled={emailVerified}
+                  className="bg-white/20 border-white/30 text-white placeholder:text-white/60 focus:bg-white/30 flex-1"
+                />
+                <Button
+                  type="button"
+                  onClick={handleSendCode}
+                  disabled={sendingCode || emailVerified || !email}
+                  className="bg-white/20 text-white hover:bg-white/30 border border-white/40 whitespace-nowrap"
+                >
+                  {sendingCode ? "Sending..." : codeSent ? "Resend" : "Send Code"}
+                </Button>
+              </div>
             </div>
+
+            {codeSent && !emailVerified && (
+              <div>
+                <label
+                  htmlFor="verificationCode"
+                  className="block text-sm font-medium text-white/90 mb-1"
+                >
+                  Verification Code
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    id="verificationCode"
+                    type="text"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="Enter 6-digit code"
+                    maxLength={6}
+                    className="bg-white/20 border-white/30 text-white placeholder:text-white/60 focus:bg-white/30 flex-1"
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleVerifyCode}
+                    disabled={verifyingCode || verificationCode.length !== 6}
+                    className="bg-white/20 text-white hover:bg-white/30 border border-white/40 whitespace-nowrap"
+                  >
+                    {verifyingCode ? "Verifying..." : "Verify"}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {emailVerified && (
+              <div className="bg-green-400/20 border border-green-300/50 text-green-50 px-4 py-2 rounded-lg text-sm">
+                ✓ Email verified
+              </div>
+            )}
 
             <div>
               <label
@@ -97,15 +252,16 @@ export default function RegisterPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={8}
+                placeholder="At least 8 characters"
                 className="bg-white/20 border-white/30 text-white placeholder:text-white/60 focus:bg-white/30"
               />
             </div>
 
             <Button
               type="submit"
-              disabled={loading}
-              className="w-full bg-white/20 text-white hover:bg-white/30 border border-white/40"
+              disabled={loading || !emailVerified}
+              className="w-full bg-white/20 text-white hover:bg-white/30 border border-white/40 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? "Registering..." : "Register"}
             </Button>

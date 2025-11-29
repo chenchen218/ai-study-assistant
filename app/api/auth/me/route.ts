@@ -23,6 +23,9 @@ export async function GET(request: NextRequest) {
         email: user.email,
         name: user.name,
         role: user.role,
+        provider: user.provider || "local",
+        picture: user.picture,
+        createdAt: user.createdAt,
       },
     });
   } catch (error: any) {

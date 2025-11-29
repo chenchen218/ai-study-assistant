@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import connectDB from "@/lib/db";
 import { User } from "@/models/User";
+import { EmailVerification } from "@/models/EmailVerification";
 import { generateToken } from "@/lib/auth";
 import { rateLimiters } from "@/lib/rate-limit";
 
@@ -24,8 +25,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate password length
+    if (password.length < 8) {
+      return NextResponse.json(
+        { error: "Password must be at least 8 characters long" },
+        { status: 400 }
+      );
+    }
+
     // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
       return NextResponse.json(
         { error: "User already exists" },
@@ -33,20 +42,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Verify that email has been verified
+    const verification = await EmailVerification.findOne({
+      email: email.toLowerCase(),
+      verified: true,
+    });
+
+    if (!verification) {
+      return NextResponse.json(
+        { error: "Email not verified. Please verify your email first." },
+        { status: 400 }
+      );
+    }
+
+    // Delete the verification record after successful registration
+    await EmailVerification.deleteOne({ _id: verification._id });
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create user
     const user = await User.create({
-      email,
+      email: email.toLowerCase(),
       password: hashedPassword,
       name,
-      role: email === process.env.ADMIN_EMAIL ? "admin" : "user",
+      provider: "local",
+      role: email.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase() ? "admin" : "user",
     });
 
     // Generate token
     const token = generateToken({
-      userId: user._id.toString(),
+      userId: String(user._id),
       email: user.email,
       role: user.role,
     });

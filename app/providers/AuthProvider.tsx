@@ -8,6 +8,9 @@ interface User {
   email: string;
   name: string;
   role: string;
+  provider?: "local" | "google" | "github";
+  picture?: string;
+  createdAt?: string;
 }
 
 interface AuthContextType {

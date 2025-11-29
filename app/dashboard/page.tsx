@@ -282,6 +282,14 @@ export default function DashboardPage() {
                   Analytics
                 </Button>
               </Link>
+              <Link href="/profile">
+                <Button
+                  variant="ghost"
+                  className="text-white hover:bg-white/20 hover:text-white"
+                >
+                  Profile
+                </Button>
+              </Link>
               {user?.role === "admin" && (
                 <Link href="/admin">
                   <Button
@@ -332,7 +340,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent className="px-0">
                 <p className="text-sm text-white/80 font-medium">
-                  Supports PDF and DOCX. We'll generate summaries, notes, and
+                  Supports PDF and DOCX. We&apos;ll generate summaries, notes, and
                   quizzes right away.
                 </p>
                 <div

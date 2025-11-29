@@ -124,17 +124,29 @@ export async function generateFlashcards(
   content: string,
   count: number = 10
 ): Promise<Array<{ question: string; answer: string }>> {
-  const prompt = `You are an expert at creating educational flashcards. Generate exactly ${count} flashcards with clear questions and detailed answers. 
+  const prompt = `You are an expert at creating educational flashcards for academic study. Generate exactly ${count} flashcards that focus on:
+- Key concepts, theories, definitions, and principles
+- Important facts, formulas, and relationships
+- Critical thinking questions about the material
+- Academic terminology and technical terms
+
+AVOID creating flashcards about:
+- Personal names (teachers, authors, etc.) unless they are central to the concept
+- Trivial details like dates without context
+- Non-academic information
+- Questions that don't test understanding
+
+Focus on questions that help students understand and remember the core academic content.
 
 IMPORTANT: Return the response as a valid JSON array of objects. Each object must have exactly two fields: "question" and "answer". Do not include any markdown formatting, code blocks, or extra text - only return the JSON array.
 
 Example format:
 [
-  {"question": "What is X?", "answer": "X is..."},
-  {"question": "What is Y?", "answer": "Y is..."}
+  {"question": "What is the definition of X?", "answer": "X is a concept that..."},
+  {"question": "What are the key principles of Y?", "answer": "The key principles of Y are..."}
 ]
 
-Please create ${count} flashcards from the following content:
+Please create ${count} academic flashcards from the following content:
 
 ${content}`;
 
@@ -203,13 +215,25 @@ export async function generateQuizQuestions(
     explanation?: string;
   }>
 > {
-  const prompt = `You are an expert at creating quiz questions. Generate exactly ${count} multiple-choice questions with 4 options each.
+  const prompt = `You are an expert at creating academic quiz questions. Generate exactly ${count} multiple-choice questions that focus on:
+- Key concepts, theories, definitions, and principles
+- Important facts, formulas, and relationships
+- Critical thinking and application questions
+- Academic terminology and technical understanding
+
+AVOID creating questions about:
+- Personal names (teachers, authors, etc.) unless they are central to the concept
+- Trivial details like dates without context
+- Non-academic information
+- Questions that don't test understanding
+
+Focus on questions that test students' understanding of the core academic content. Each question should have one clearly correct answer and three plausible but incorrect distractors.
 
 IMPORTANT: Return the response as a valid JSON object with a "questions" array. Each question must have:
 - "question": string
 - "options": array of exactly 4 strings
 - "correctAnswer": number (0-3 index indicating the correct option)
-- "explanation": string (optional)
+- "explanation": string (optional but recommended)
 
 Do not include any markdown formatting, code blocks, or extra text - only return the JSON object.
 
@@ -217,7 +241,7 @@ Example format:
 {
   "questions": [
     {
-      "question": "What is X?",
+      "question": "What is the primary definition of X?",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "correctAnswer": 0,
       "explanation": "X is correct because..."
@@ -225,7 +249,7 @@ Example format:
   ]
 }
 
-Please create ${count} quiz questions from the following content:
+Please create ${count} academic quiz questions from the following content:
 
 ${content}`;
 
@@ -264,6 +288,92 @@ ${content}`;
   } catch (error) {
     console.error("Error generating quiz questions:", error);
     return [];
+  }
+}
+
+/**
+ * Verifies if a user's answer to a flashcard question is correct
+ * Uses AI to evaluate semantic similarity and correctness
+ * @param question - The flashcard question
+ * @param correctAnswer - The correct answer from the flashcard
+ * @param userAnswer - The user's input answer
+ * @returns Promise resolving to an object with isCorrect boolean and feedback string
+ * @throws {Error} If API key is missing or AI generation fails
+ */
+export async function verifyFlashcardAnswer(
+  question: string,
+  correctAnswer: string,
+  userAnswer: string
+): Promise<{ isCorrect: boolean; feedback: string }> {
+  const prompt = `You are an expert at evaluating student answers to academic questions. Your task is to determine if a student's answer is correct based on the expected answer.
+
+Question: ${question}
+Expected Answer: ${correctAnswer}
+Student's Answer: ${userAnswer}
+
+Evaluate the student's answer considering:
+1. Semantic similarity - does the student's answer convey the same meaning as the expected answer?
+2. Key concepts - does the student demonstrate understanding of the core concepts?
+3. Completeness - is the answer sufficiently complete (minor omissions are acceptable)?
+4. Accuracy - are there any factual errors?
+
+Be lenient with:
+- Different wording that conveys the same meaning
+- Minor grammatical differences
+- Partial answers that show understanding
+
+Be strict with:
+- Factual errors
+- Completely incorrect answers
+- Answers that show no understanding
+
+Respond with a JSON object in this exact format:
+{
+  "isCorrect": true or false,
+  "feedback": "Brief explanation (maximum 2 sentences) of why the answer is correct or incorrect"
+}
+
+IMPORTANT: 
+- Keep feedback concise and under 100 words
+- Return ONLY the JSON object, no markdown, no code blocks, no additional text.`;
+
+  try {
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY is not configured");
+    }
+    const model = await getModel();
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text().trim();
+
+    // Extract JSON from response
+    let jsonText = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+
+    try {
+      const parsed = JSON.parse(jsonText);
+      return {
+        isCorrect: parsed.isCorrect === true,
+        feedback: parsed.feedback || (parsed.isCorrect ? "Correct!" : "Incorrect. Please review the answer."),
+      };
+    } catch (parseError) {
+      console.error("Error parsing verification JSON:", parseError);
+      // Fallback: simple keyword matching
+      const userLower = userAnswer.toLowerCase();
+      const correctLower = correctAnswer.toLowerCase();
+      const keyWords = correctLower.split(/\s+/).filter((w: string) => w.length > 3);
+      const matches = keyWords.filter((word: string) => userLower.includes(word)).length;
+      const isCorrect = matches >= keyWords.length * 0.5; // At least 50% keyword match
+
+      return {
+        isCorrect,
+        feedback: isCorrect
+          ? "Your answer appears to be correct based on keyword matching."
+          : "Your answer doesn't seem to match. Please review the correct answer.",
+      };
+    }
+  } catch (error: any) {
+    console.error("Error verifying flashcard answer:", error);
+    throw new Error(`Failed to verify answer: ${error.message}`);
   }
 }
 

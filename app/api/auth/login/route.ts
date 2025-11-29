@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
     // Find user
     const user = await User.findOne({ email });
-    if (!user) {
+    if (!user || !user.password) {
       return NextResponse.json(
         { error: "Invalid credentials" },
         { status: 401 }
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
 
     // Generate token
     const token = generateToken({
-      userId: user._id.toString(),
+      userId: String(user._id),
       email: user.email,
       role: user.role,
     });

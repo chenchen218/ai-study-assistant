@@ -135,6 +135,12 @@ export default function DocumentPage() {
   const [isFlashcardFlipped, setIsFlashcardFlipped] = useState(false);
   const [flashcardFeedbackLoading, setFlashcardFeedbackLoading] =
     useState(false);
+  const [userAnswer, setUserAnswer] = useState("");
+  const [isVerifyingAnswer, setIsVerifyingAnswer] = useState(false);
+  const [answerResult, setAnswerResult] = useState<{
+    isCorrect: boolean;
+    feedback: string;
+  } | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [quizSelectedAnswer, setQuizSelectedAnswer] = useState<number | null>(
     null
@@ -271,12 +277,67 @@ export default function DocumentPage() {
   const handleFlashcardNavigation = (direction: "next" | "previous") => {
     if (!data?.flashcards.length) return;
     setIsFlashcardFlipped(false);
+    setUserAnswer("");
+    setAnswerResult(null);
     setCurrentFlashcard((prev) => {
       if (direction === "next") {
         return (prev + 1) % data.flashcards.length;
       }
       return (prev - 1 + data.flashcards.length) % data.flashcards.length;
     });
+  };
+
+  // Reset answer when switching flashcards
+  useEffect(() => {
+    setUserAnswer("");
+    setAnswerResult(null);
+    setIsFlashcardFlipped(false);
+  }, [currentFlashcard]);
+
+  const handleVerifyAnswer = async () => {
+    if (!data?.flashcards.length || !userAnswer.trim()) return;
+    const flashcard = data.flashcards[currentFlashcard];
+    if (!flashcard) return;
+
+    setIsVerifyingAnswer(true);
+    setAnswerResult(null);
+
+    try {
+      const response = await fetch("/api/flashcards/verify-answer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          flashcardId: flashcard.id,
+          userAnswer: userAnswer.trim(),
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setAnswerResult({
+          isCorrect: result.isCorrect,
+          feedback: result.feedback,
+        });
+        // If correct, automatically mark as known
+        if (result.isCorrect) {
+          await handleFlashcardFeedback(true);
+        }
+      } else {
+        setAnswerResult({
+          isCorrect: false,
+          feedback: result.error || "Failed to verify answer. Please try again.",
+        });
+      }
+    } catch (error) {
+      console.error("Error verifying answer:", error);
+      setAnswerResult({
+        isCorrect: false,
+        feedback: "Network error. Please try again.",
+      });
+    } finally {
+      setIsVerifyingAnswer(false);
+    }
   };
 
   const handleFlashcardFeedback = async (isKnown: boolean) => {
@@ -490,12 +551,12 @@ export default function DocumentPage() {
       const container = notesExportRef.current;
       
       // Use html2canvas to capture the content
-      const canvas = await html2canvas(container, {
+      const canvas = await html2canvas(container as HTMLElement, {
         backgroundColor: "#ffffff",
         scale: 2,
         logging: false,
         useCORS: true,
-      });
+      } as any);
 
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF({
@@ -993,20 +1054,7 @@ export default function DocumentPage() {
                     </div>
 
                     <div className="mb-8" style={{ perspective: "1200px" }}>
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={() =>
-                          setIsFlashcardFlipped((previous) => !previous)
-                        }
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            setIsFlashcardFlipped((previous) => !previous);
-                          }
-                        }}
-                        className="relative h-80 cursor-pointer"
-                      >
+                      <div className="relative h-80">
                         <div
                           className="relative h-full w-full rounded-3xl border border-white/30 bg-white/5 p-8 transition-transform duration-500"
                           style={{
@@ -1017,21 +1065,59 @@ export default function DocumentPage() {
                           }}
                         >
                           <div
-                            className="absolute inset-0 flex flex-col items-center justify-center rounded-3xl bg-gradient-to-br from-purple-600/90 to-fuchsia-600/90 text-center text-white backdrop-blur-xl"
+                            className="absolute inset-0 flex flex-col items-center justify-center rounded-3xl bg-gradient-to-br from-purple-600/90 to-fuchsia-600/90 text-center text-white backdrop-blur-xl p-6 overflow-y-auto"
                             style={{ backfaceVisibility: "hidden" }}
                           >
-                            <p className="mb-4 text-sm text-white font-semibold">
+                            <p className="mb-3 text-sm text-white font-semibold">
                               Question
                             </p>
-                            <p className="text-2xl font-bold text-white">
+                            <p className="text-xl font-bold text-white mb-4 px-2">
                               {data.flashcards[currentFlashcard].question}
                             </p>
-                            <div className="mt-8 flex items-center gap-2 text-white font-medium">
-                              <RotateCw className="h-4 w-4" />
-                              <span className="text-sm">
-                                Tap to reveal the answer
-                              </span>
+                            
+                            {/* User Answer Input */}
+                            <div 
+                              className="w-full max-w-md space-y-3 flex-shrink-0"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Textarea
+                                value={userAnswer}
+                                onChange={(e) => {
+                                  setUserAnswer(e.target.value);
+                                  setAnswerResult(null);
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                placeholder="Type your answer here..."
+                                className="min-h-[100px] w-full rounded-xl border border-white/30 bg-white/10 text-white placeholder:text-white/60 focus:border-white/50 focus:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/30"
+                                disabled={isVerifyingAnswer || answerResult?.isCorrect}
+                              />
+                              {answerResult && (
+                                <div
+                                  className={`rounded-lg border p-3 text-sm max-h-32 overflow-y-auto ${
+                                    answerResult.isCorrect
+                                      ? "border-green-400/50 bg-green-400/20 text-green-100"
+                                      : "border-red-400/50 bg-red-400/20 text-red-100"
+                                  }`}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <p className="font-semibold mb-1">
+                                    {answerResult.isCorrect ? "✓ Correct!" : "✗ Incorrect"}
+                                  </p>
+                                  <p className="text-xs leading-relaxed break-words">{answerResult.feedback}</p>
+                                </div>
+                              )}
+                              <Button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleVerifyAnswer();
+                                }}
+                                disabled={!userAnswer.trim() || isVerifyingAnswer || answerResult?.isCorrect}
+                                className="w-full rounded-xl border border-white/40 bg-white/20 text-white hover:bg-white/30 disabled:opacity-50"
+                              >
+                                {isVerifyingAnswer ? "Verifying..." : "Check Answer"}
+                              </Button>
                             </div>
+                            
                           </div>
                           <div
                             className="absolute inset-0 flex flex-col items-center justify-center rounded-3xl bg-gradient-to-br from-blue-500/90 to-cyan-500/90 text-center text-white backdrop-blur-xl"

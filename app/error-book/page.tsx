@@ -68,8 +68,8 @@ export default function ErrorBookPage() {
         console.log("📖 Error book data:", data);
         setErrorBooks(data.errorBooks || []);
         // Expand all documents by default
-        const allDocIds = new Set(
-          (data.errorBooks || []).map((eb: ErrorBook) => eb.document.id)
+        const allDocIds = new Set<string>(
+          (data.errorBooks || []).map((eb: ErrorBook) => String(eb.document.id))
         );
         setExpandedDocuments(allDocIds);
       } else {
