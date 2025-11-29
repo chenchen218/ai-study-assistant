@@ -8,6 +8,9 @@ import mammoth from "mammoth";
 import { getUserIdFromRequest } from "@/lib/auth";
 import { rateLimiters } from "@/lib/rate-limit";
 
+// Force dynamic rendering since we use request.headers
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   // Apply rate limiting
   const rateLimitResponse = rateLimiters.qa(request);

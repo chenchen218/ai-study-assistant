@@ -8,6 +8,9 @@ import { QuizQuestion } from "@/models/QuizQuestion";
 import { getUserIdFromRequest } from "@/lib/auth";
 import { deleteFromS3 } from "@/lib/s3";
 
+// Force dynamic rendering since we use request.headers
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

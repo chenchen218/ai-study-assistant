@@ -3,6 +3,9 @@ import connectDB from "@/lib/db";
 import { User } from "@/models/User";
 import { getUserIdFromRequest } from "@/lib/auth";
 
+// Force dynamic rendering since we use request.headers
+export const dynamic = 'force-dynamic';
+
 /**
  * PUT /api/profile/update-name
  * Updates the user's name

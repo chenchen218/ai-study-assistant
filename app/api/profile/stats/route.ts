@@ -5,6 +5,9 @@ import { StudySession } from "@/models/StudySession";
 import { QuizPerformance } from "@/models/QuizPerformance";
 import { getUserIdFromRequest } from "@/lib/auth";
 
+// Force dynamic rendering since we use request.headers
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/profile/stats
  * Gets user's account statistics for profile page

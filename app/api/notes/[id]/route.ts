@@ -3,6 +3,9 @@ import connectDB from "@/lib/db";
 import { getUserIdFromRequest } from "@/lib/auth";
 import { Note } from "@/models/Note";
 
+// Force dynamic rendering since we use request.headers
+export const dynamic = 'force-dynamic';
+
 /**
  * Updates a note's content
  * @param request - The incoming request with note content in the body

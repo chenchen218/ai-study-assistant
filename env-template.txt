@@ -1,0 +1,85 @@
+# ============================================
+# AI Study Assistant - Environment Variables
+# ============================================
+# Copy this content and paste into Vercel Environment Variables
+# Or use "Import .env" button in Vercel
+# ============================================
+
+# ============================================
+# REQUIRED - Database
+# ============================================
+MONGODB_URI=mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/ai-study-assistant
+
+# ============================================
+# REQUIRED - AI Service
+# ============================================
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# ============================================
+# REQUIRED - AWS S3 (File Storage)
+# ============================================
+AWS_ACCESS_KEY_ID=your_aws_access_key_id
+AWS_SECRET_ACCESS_KEY=your_aws_secret_access_key
+AWS_REGION=us-east-1
+AWS_S3_BUCKET_NAME=your-s3-bucket-name
+
+# ============================================
+# REQUIRED - Authentication
+# ============================================
+# Generate a secure JWT_SECRET using: openssl rand -base64 32
+# Example (DO NOT use this in production, generate your own!):
+# JWT_SECRET=km86ZtO4YWB6eKq3V0xNkHqzlP9jgC8ONGqDSNidb5s=
+JWT_SECRET=your-generated-jwt-secret-here
+
+# ============================================
+# OPTIONAL - Admin
+# ============================================
+ADMIN_EMAIL=your-admin-email@example.com
+
+# ============================================
+# OPTIONAL - Email Service (Choose ONE)
+# ============================================
+# 
+# IMPORTANT: For AWS SES to work, you need:
+# 1. AWS_ACCESS_KEY_ID (already set above for S3)
+# 2. AWS_SECRET_ACCESS_KEY (already set above for S3)
+# 3. AWS_REGION (already set above for S3)
+# 4. AWS_SES_FROM_EMAIL (verified email address in SES)
+#
+# See AWS_SES_QUICK_SETUP.md for setup instructions
+
+# Option 1: AWS SES (Recommended for Production)
+# Must be a verified email address in AWS SES console
+AWS_SES_FROM_EMAIL=your-verified-email@gmail.com
+
+# Option 2: Gmail (For Development)
+# GMAIL_USER=your-email@gmail.com
+# GMAIL_APP_PASSWORD=your-gmail-app-password
+
+# Option 3: Custom SMTP
+# EMAIL_HOST=smtp.example.com
+# EMAIL_PORT=587
+# EMAIL_USER=your-email@example.com
+# EMAIL_PASSWORD=your-email-password
+# EMAIL_FROM=noreply@example.com
+
+# ============================================
+# OPTIONAL - OAuth (If using Google/GitHub login)
+# ============================================
+
+# Google OAuth
+GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+
+# GitHub OAuth
+GITHUB_CLIENT_ID=your-github-client-id
+GITHUB_CLIENT_SECRET=your-github-client-secret
+
+# ============================================
+# OPTIONAL - Base URL (For OAuth callbacks)
+# ============================================
+# NOTE: This is optional before deployment. Code has default value.
+# After deployment, set this to your actual Vercel domain for OAuth to work.
+# Example: https://ai-study-assistant.vercel.app
+# NEXT_PUBLIC_BASE_URL=https://your-app.vercel.app
+

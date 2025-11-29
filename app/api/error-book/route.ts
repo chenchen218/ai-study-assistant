@@ -4,6 +4,9 @@ import { getUserIdFromRequest } from "@/lib/auth";
 import { WrongAnswer } from "@/models/WrongAnswer";
 import { Document } from "@/models/Document";
 
+// Force dynamic rendering since we use request.headers
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/error-book
  * Get all wrong answers grouped by document

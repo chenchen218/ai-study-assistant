@@ -6,6 +6,9 @@ import { WrongAnswer } from "@/models/WrongAnswer";
 import { getUserIdFromRequest } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 
+// Force dynamic rendering since we use request.headers
+export const dynamic = 'force-dynamic';
+
 /**
  * DELETE /api/profile/delete-account
  * Deletes the user's account and all associated data

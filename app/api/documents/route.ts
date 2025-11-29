@@ -17,6 +17,9 @@ import { Flashcard } from "@/models/Flashcard";
 import { QuizQuestion } from "@/models/QuizQuestion";
 import { rateLimiters } from "@/lib/rate-limit";
 
+// Force dynamic rendering since we use request.headers
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   // Apply rate limiting
   const rateLimitResponse = rateLimiters.documents(request);

@@ -4,6 +4,9 @@ import { User } from "@/models/User";
 import { Document } from "@/models/Document";
 import { isAdmin } from "@/lib/auth";
 
+// Force dynamic rendering since we use request.headers
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     await connectDB();

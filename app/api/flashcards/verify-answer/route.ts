@@ -6,6 +6,9 @@ import { FlashcardPerformance } from "@/models/FlashcardPerformance";
 import { verifyFlashcardAnswer } from "@/lib/ai";
 import { rateLimiters } from "@/lib/rate-limit";
 
+// Force dynamic rendering since we use request.headers
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/flashcards/verify-answer
  * Verifies a user's answer to a flashcard question using AI

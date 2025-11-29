@@ -5,6 +5,9 @@ import { EmailVerification } from "@/models/EmailVerification";
 import { getUserIdFromRequest } from "@/lib/auth";
 import { sendEmailChangeNotification } from "@/lib/email";
 
+// Force dynamic rendering since we use request.headers
+export const dynamic = 'force-dynamic';
+
 /**
  * PUT /api/profile/update-email
  * Updates the user's email address

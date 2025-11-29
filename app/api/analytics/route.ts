@@ -6,6 +6,9 @@ import { StudySession } from "@/models/StudySession";
 import { QuizPerformance } from "@/models/QuizPerformance";
 import { FlashcardPerformance } from "@/models/FlashcardPerformance";
 
+// Force dynamic rendering since we use request.headers
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     await connectDB();

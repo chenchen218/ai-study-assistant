@@ -3,6 +3,9 @@ import connectDB from "@/lib/db";
 import { getUserIdFromRequest } from "@/lib/auth";
 import { FlashcardPerformance } from "@/models/FlashcardPerformance";
 
+// Force dynamic rendering since we use request.headers
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     await connectDB();

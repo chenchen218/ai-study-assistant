@@ -5,6 +5,9 @@ import { WrongAnswer } from "@/models/WrongAnswer";
 import { Document } from "@/models/Document";
 import mongoose from "mongoose";
 
+// Force dynamic rendering since we use request.headers
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/error-book/[documentId]
  * Get wrong answers for a specific document

@@ -5,6 +5,9 @@ import { QuizPerformance } from "@/models/QuizPerformance";
 import { WrongAnswer } from "@/models/WrongAnswer";
 import { QuizQuestion } from "@/models/QuizQuestion";
 
+// Force dynamic rendering since we use request.headers
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     await connectDB();
