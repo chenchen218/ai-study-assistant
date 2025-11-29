@@ -142,9 +142,17 @@ export async function sendVerificationCode(
     const htmlBody = verificationEmailHTML(code);
     const textBody = verificationEmailText(code);
 
+    console.log(`📧 Attempting to send verification code to ${email} using method: ${method}`);
+
     if (method === "aws-ses") {
       // Use AWS SES (production - supports all email providers)
       console.log("📧 Sending via AWS SES");
+      console.log("📧 AWS Config:", {
+        hasAccessKey: !!process.env.AWS_ACCESS_KEY_ID,
+        hasSecretKey: !!process.env.AWS_SECRET_ACCESS_KEY,
+        region: process.env.AWS_REGION,
+        fromEmail: process.env.AWS_SES_FROM_EMAIL,
+      });
       await sendEmailViaSES(email, subject, htmlBody, textBody);
     } else {
       // Use SMTP (Gmail or custom SMTP)

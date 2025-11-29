@@ -66,7 +66,13 @@ export async function sendEmailViaSES(
     return response.MessageId || "";
   } catch (error: any) {
     console.error("❌ Error sending email via AWS SES:", error);
-    throw new Error(`Failed to send email via SES: ${error.message}`);
+    console.error("❌ Error details:", {
+      name: error.name,
+      message: error.message,
+      code: error.Code || error.code,
+      statusCode: error.$metadata?.httpStatusCode,
+    });
+    throw new Error(`Failed to send email via SES: ${error.message || error.Code || "Unknown error"}`);
   }
 }
 

@@ -79,11 +79,10 @@ export async function POST(request: NextRequest) {
       console.log(`✅ Verification code sent to: ${email}`);
     } catch (emailError: any) {
       console.error("❌ Error sending email:", emailError);
-      // Still return success to prevent email enumeration
-      // In production, you might want to handle this differently
+      console.error("❌ Full error:", JSON.stringify(emailError, null, 2));
       return NextResponse.json(
         {
-          error: "Failed to send verification email. Please check your email configuration.",
+          error: `Failed to send verification email: ${emailError.message || "Please check your email configuration."}`,
         },
         { status: 500 }
       );
