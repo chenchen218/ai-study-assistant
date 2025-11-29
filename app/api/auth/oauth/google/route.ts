@@ -3,6 +3,9 @@ import connectDB from "@/lib/db";
 import { User } from "@/models/User";
 import { generateToken } from "@/lib/auth";
 
+// Force dynamic rendering since we use request.url
+export const dynamic = 'force-dynamic';
+
 /**
  * Initiates Google OAuth login flow
  * Redirects user to Google OAuth consent screen
