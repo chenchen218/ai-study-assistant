@@ -49,12 +49,12 @@ export default function ForgotPasswordPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || "发送重置码失败");
+        setError(data.error || "Failed to send reset code");
         setSendingCode(false);
         return;
       }
 
-      setSuccess(data.message || "密码重置验证码已发送到您的邮箱");
+      setSuccess(data.message || "Password reset code has been sent to your email.");
       setCodeSent(true);
       setStep("reset");
       setSendingCode(false);

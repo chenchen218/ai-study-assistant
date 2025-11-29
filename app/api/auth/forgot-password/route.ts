@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       // Return error if user doesn't exist
       return NextResponse.json(
         {
-          error: "该邮箱不存在",
+          error: "Email address not found",
         },
         { status: 404 }
       );
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       // Return error if user is OAuth-only (no password to reset)
       return NextResponse.json(
         {
-          error: "该邮箱使用第三方登录（Google/GitHub），无法重置密码",
+          error: "This email is associated with a third-party account (Google/GitHub). Password reset is not available for OAuth accounts.",
         },
         { status: 400 }
       );
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
       console.error("❌ Error sending email:", emailError);
       return NextResponse.json(
         {
-          error: "发送邮件失败，请稍后重试",
+          error: "Failed to send email. Please try again later.",
         },
         { status: 500 }
       );
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        message: "密码重置验证码已发送到您的邮箱",
+        message: "Password reset code has been sent to your email.",
       },
       { status: 200 }
     );
