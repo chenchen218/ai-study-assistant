@@ -19,25 +19,35 @@ export async function GET(request: NextRequest) {
     const state = searchParams.get("state");
     const error = searchParams.get("error");
 
+    // Get base URL from environment or request headers
+    const protocol = request.headers.get("x-forwarded-proto") || (request.url.startsWith("https") ? "https" : "http");
+    const host = request.headers.get("host") || request.headers.get("x-forwarded-host");
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (host ? `${protocol}://${host}` : "http://localhost:3000");
+
     if (error) {
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/login?error=${encodeURIComponent(error)}`
+        `${baseUrl}/login?error=${encodeURIComponent(error)}`
       );
     }
 
     if (!code) {
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/login?error=no_code`
+        `${baseUrl}/login?error=no_code`
       );
     }
 
+    // Get base URL from environment or request headers
+    const protocol = request.headers.get("x-forwarded-proto") || (request.url.startsWith("https") ? "https" : "http");
+    const host = request.headers.get("host") || request.headers.get("x-forwarded-host");
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (host ? `${protocol}://${host}` : "http://localhost:3000");
+    
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const redirectUri = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/auth/oauth/google/callback`;
+    const redirectUri = `${baseUrl}/api/auth/oauth/google/callback`;
 
     if (!clientId || !clientSecret) {
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/login?error=oauth_not_configured`
+        `${baseUrl}/login?error=oauth_not_configured`
       );
     }
 
@@ -60,7 +70,7 @@ export async function GET(request: NextRequest) {
       const errorData = await tokenResponse.text();
       console.error("Google token exchange error:", errorData);
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/login?error=token_exchange_failed`
+        `${baseUrl}/login?error=token_exchange_failed`
       );
     }
 
@@ -79,7 +89,7 @@ export async function GET(request: NextRequest) {
 
     if (!userInfoResponse.ok) {
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/login?error=user_info_failed`
+        `${baseUrl}/login?error=user_info_failed`
       );
     }
 
@@ -119,7 +129,6 @@ export async function GET(request: NextRequest) {
     });
 
     // Redirect to dashboard with token in cookie
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
     const response = NextResponse.redirect(`${baseUrl}/dashboard`);
 
     // Set cookie with proper configuration
@@ -140,8 +149,12 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (error: any) {
     console.error("Google OAuth callback error:", error);
+    // Get base URL for error redirect
+    const protocol = request.headers.get("x-forwarded-proto") || (request.url.startsWith("https") ? "https" : "http");
+    const host = request.headers.get("host") || request.headers.get("x-forwarded-host");
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (host ? `${protocol}://${host}` : "http://localhost:3000");
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/login?error=${encodeURIComponent(error.message || "oauth_error")}`
+      `${baseUrl}/login?error=${encodeURIComponent(error.message || "oauth_error")}`
     );
   }
 }

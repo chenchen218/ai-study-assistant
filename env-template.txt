@@ -49,8 +49,10 @@ ADMIN_EMAIL=your-admin-email@example.com
 # See AWS_SES_QUICK_SETUP.md for setup instructions
 
 # Option 1: AWS SES (Recommended for Production)
-# Must be a verified email address in AWS SES console
-AWS_SES_FROM_EMAIL=your-verified-email@gmail.com
+# For email verification: Use a verified email address
+# For domain verification: Use any email @yourdomain.com (e.g., noreply@yourdomain.com)
+# See AWS_SES_DOMAIN_QUICK_SETUP.md for domain verification setup
+AWS_SES_FROM_EMAIL=noreply@yourdomain.com
 
 # Option 2: Gmail (For Development)
 # GMAIL_USER=your-email@gmail.com
