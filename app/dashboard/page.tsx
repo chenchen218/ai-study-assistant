@@ -51,7 +51,9 @@ export default function DashboardPage() {
   const fetchDocuments = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/documents");
+      const response = await fetch("/api/documents", {
+        credentials: "include", // Include cookies for authentication
+      });
       if (response.ok) {
         const data = await response.json();
         setDocuments(data.documents);
@@ -66,7 +68,9 @@ export default function DashboardPage() {
   const pollDocumentStatus = useCallback(
     async (documentId: string) => {
       try {
-        const response = await fetch(`/api/documents/${documentId}`);
+        const response = await fetch(`/api/documents/${documentId}`, {
+          credentials: "include", // Include cookies for authentication
+        });
         if (response.ok) {
           const payload = await response.json();
           const status: string | undefined = payload.document?.status;
@@ -141,6 +145,7 @@ export default function DashboardPage() {
       const response = await fetch("/api/documents", {
         method: "POST",
         body: formData,
+        credentials: "include", // Include cookies for authentication
       });
 
       if (response.ok) {
@@ -202,6 +207,7 @@ export default function DashboardPage() {
     try {
       const response = await fetch(`/api/documents/${documentId}`, {
         method: "DELETE",
+        credentials: "include", // Include cookies for authentication
       });
 
       if (response.ok) {
