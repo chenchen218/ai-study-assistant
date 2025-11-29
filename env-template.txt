@@ -50,10 +50,11 @@ ADMIN_EMAIL=your-admin-email@example.com
 
 # Option 1: AWS SES (Recommended for Production)
 # For email verification: Use a verified email address (e.g., your-email@gmail.com)
-# For domain verification: Use any email @yourdomain.com (e.g., noreply@aistudyassistant.app)
+# For domain verification: Use any email @yourdomain.com (e.g., mail@aistudyassistant.app)
 # Since domain aistudyassistant.app is verified, you can use any email @aistudyassistant.app
+# Examples: mail@aistudyassistant.app, noreply@aistudyassistant.app, support@aistudyassistant.app
 # See SES_DOMAIN_VERIFIED_SETUP.md for domain verification setup
-AWS_SES_FROM_EMAIL=noreply@aistudyassistant.app
+AWS_SES_FROM_EMAIL=mail@aistudyassistant.app
 
 # Option 2: Gmail (For Development)
 # GMAIL_USER=your-email@gmail.com
