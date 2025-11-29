@@ -32,7 +32,9 @@ export async function sendEmailViaSES(
 ): Promise<string> {
   try {
     const sesClient = createSESClient();
-    const fromEmail = process.env.AWS_SES_FROM_EMAIL || process.env.EMAIL_FROM || "noreply@aistudyassistant.com";
+    // Use domain-verified email address (e.g., noreply@aistudyassistant.app)
+    // Since domain is verified in SES, any email @aistudyassistant.app can be used
+    const fromEmail = process.env.AWS_SES_FROM_EMAIL || process.env.EMAIL_FROM || "noreply@aistudyassistant.app";
 
     const command = new SendEmailCommand({
       FromEmailAddress: fromEmail,
