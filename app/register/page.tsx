@@ -306,8 +306,8 @@ export default function RegisterPage() {
                 className="w-full bg-white/20 text-white hover:bg-white/30 border border-white/40 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading || verifyingCode
-                  ? "Verifying..."
-                  : "Verify & Create Account"}
+                  ? "Creating Account..."
+                  : "Create Account"}
               </Button>
 
               <Button
