@@ -567,7 +567,7 @@ export default function ProfilePage() {
           </Card>
 
           {/* Change Password (only for local accounts) */}
-          {(!user?.provider || user.provider === "local") && (
+          {(!user?.provider || user.provider === "local" || user?.provider === undefined) && (
             <Card className="mb-4 bg-white/20 backdrop-blur-xl border-white/30">
               <CardHeader>
                 <CardTitle className="text-white flex items-center gap-2">

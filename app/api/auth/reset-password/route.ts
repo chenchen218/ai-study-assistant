@@ -5,6 +5,9 @@ import { User } from "@/models/User";
 import { EmailVerification } from "@/models/EmailVerification";
 import { rateLimiters } from "@/lib/rate-limit";
 
+// Force dynamic rendering since we use request.json
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/auth/reset-password
  * Resets user's password using verification code

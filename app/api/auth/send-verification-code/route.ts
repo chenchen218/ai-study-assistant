@@ -5,6 +5,9 @@ import { User } from "@/models/User";
 import { sendVerificationCode } from "@/lib/email";
 import { rateLimiters } from "@/lib/rate-limit";
 
+// Force dynamic rendering since we use request.json
+export const dynamic = 'force-dynamic';
+
 /**
  * Generates a random 6-digit verification code
  * @returns 6-digit code as string
