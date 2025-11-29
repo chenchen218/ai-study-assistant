@@ -153,9 +153,11 @@ export async function GET(request: NextRequest) {
     const response = NextResponse.redirect(`${baseUrl}/dashboard`);
 
     // Set cookie with proper configuration
+    // Use secure: true for HTTPS (production), secure: false for HTTP (development)
+    const isSecure = baseUrl.startsWith("https://");
     response.cookies.set("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isSecure,
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: "/",
