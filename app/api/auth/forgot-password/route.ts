@@ -49,25 +49,23 @@ export async function POST(request: NextRequest) {
     // Check if user exists and has a password (local account)
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
-      // Don't reveal if user exists for security
+      // Return error if user doesn't exist
       return NextResponse.json(
         {
-          success: true,
-          message: "If an account exists with this email, a password reset code has been sent.",
+          error: "该邮箱不存在",
         },
-        { status: 200 }
+        { status: 404 }
       );
     }
 
     // Check if user has a password (not OAuth-only account)
     if (!user.password) {
-      // Don't reveal account type for security
+      // Return error if user is OAuth-only (no password to reset)
       return NextResponse.json(
         {
-          success: true,
-          message: "If an account exists with this email, a password reset code has been sent.",
+          error: "该邮箱使用第三方登录（Google/GitHub），无法重置密码",
         },
-        { status: 200 }
+        { status: 400 }
       );
     }
 
@@ -92,20 +90,18 @@ export async function POST(request: NextRequest) {
       console.log(`✅ Password reset code sent to: ${email}`);
     } catch (emailError: any) {
       console.error("❌ Error sending email:", emailError);
-      // Still return success to prevent email enumeration
       return NextResponse.json(
         {
-          success: true,
-          message: "If an account exists with this email, a password reset code has been sent.",
+          error: "发送邮件失败，请稍后重试",
         },
-        { status: 200 }
+        { status: 500 }
       );
     }
 
     return NextResponse.json(
       {
         success: true,
-        message: "If an account exists with this email, a password reset code has been sent.",
+        message: "密码重置验证码已发送到您的邮箱",
       },
       { status: 200 }
     );
