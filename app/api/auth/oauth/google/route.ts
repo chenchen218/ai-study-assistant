@@ -12,13 +12,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  
-  // Get base URL from environment or request headers
-  const protocol = request.headers.get("x-forwarded-proto") || (request.url.startsWith("https") ? "https" : "http");
-  const host = request.headers.get("host") || request.headers.get("x-forwarded-host");
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (host ? `${protocol}://${host}` : "http://localhost:3000");
-  
-  const redirectUri = searchParams.get("redirect_uri") || `${baseUrl}/api/auth/oauth/google/callback`;
+  const redirectUri = searchParams.get("redirect_uri") || `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/auth/oauth/google/callback`;
 
   const clientId = process.env.GOOGLE_CLIENT_ID;
   if (!clientId) {
