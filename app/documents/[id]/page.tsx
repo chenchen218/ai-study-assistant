@@ -148,6 +148,7 @@ export default function DocumentPage() {
   const [quizShowResult, setQuizShowResult] = useState(false);
   const [quizScore, setQuizScore] = useState(0);
   const [quizCompleted, setQuizCompleted] = useState(false);
+  const [isRegeneratingQuiz, setIsRegeneratingQuiz] = useState(false);
   const [questionStartTime, setQuestionStartTime] = useState(() => Date.now());
   const [qaMessages, setQaMessages] = useState<QAMessage[]>(() => [
     {
@@ -1203,8 +1204,19 @@ export default function DocumentPage() {
                             {quizQuestions.length}
                           </h3>
                         </div>
-                        <div className="rounded-2xl border border-white/20 bg-white/10 px-4 py-2 text-sm text-[#1C1C1C] backdrop-blur-xl">
-                          Score: {quizScore}
+                        <div className="flex items-center gap-3">
+                          <div className="rounded-2xl border border-white/20 bg-white/10 px-4 py-2 text-sm text-[#1C1C1C] backdrop-blur-xl">
+                            Score: {quizScore}
+                          </div>
+                          <Button
+                            onClick={handleRegenerateQuiz}
+                            disabled={isRegeneratingQuiz}
+                            className="rounded-xl border border-white/40 bg-white/80 px-4 py-2 text-sm text-black hover:bg-white/90 shadow-lg disabled:opacity-60 flex items-center gap-2"
+                            title="Generate new quiz questions"
+                          >
+                            <RotateCw className={`h-4 w-4 ${isRegeneratingQuiz ? 'animate-spin' : ''}`} />
+                            {isRegeneratingQuiz ? "Regenerating..." : "Refresh Quiz"}
+                          </Button>
                         </div>
                       </div>
 
@@ -1332,12 +1344,22 @@ export default function DocumentPage() {
                           % correct
                         </p>
                       </div>
-                      <Button
-                        onClick={handleRestartQuiz}
-                        className="rounded-xl border border-white/30 bg-white/20 px-6 py-3 text-white hover:bg-white/30"
-                      >
-                        Restart quiz
-                      </Button>
+                      <div className="flex gap-3 justify-center">
+                        <Button
+                          onClick={handleRestartQuiz}
+                          className="rounded-xl border border-white/30 bg-white/20 px-6 py-3 text-white hover:bg-white/30"
+                        >
+                          Restart quiz
+                        </Button>
+                        <Button
+                          onClick={handleRegenerateQuiz}
+                          disabled={isRegeneratingQuiz}
+                          className="rounded-xl border border-white/40 bg-white/80 px-6 py-3 text-black hover:bg-white/90 shadow-lg disabled:opacity-60 flex items-center gap-2"
+                        >
+                          <RotateCw className={`h-4 w-4 ${isRegeneratingQuiz ? 'animate-spin' : ''}`} />
+                          {isRegeneratingQuiz ? "Regenerating..." : "Refresh Quiz"}
+                        </Button>
+                      </div>
                     </div>
                   )
                 ) : (
