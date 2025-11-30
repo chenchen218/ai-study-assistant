@@ -795,8 +795,15 @@ export default function DashboardPage() {
                           ? "bg-white/20 border border-white/30"
                           : "bg-white/10 border border-white/10 hover:bg-white/15"
                       }`}
-                      onDragOver={handleDragOver}
-                      onDrop={(e) => handleDrop(e, folder.id)}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        handleDragOver(e);
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleDrop(e, folder.id);
+                      }}
                     >
                       {editingFolderId === folder.id ? (
                         <div className="flex items-center gap-2">
@@ -834,7 +841,14 @@ export default function DashboardPage() {
                       ) : (
                         <div className="flex items-center justify-between">
                           <button
-                            onClick={() => setSelectedFolderId(folder.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedFolderId(folder.id);
+                            }}
+                            onMouseDown={(e) => {
+                              // Prevent drag from starting when clicking the button
+                              e.stopPropagation();
+                            }}
                             className="flex items-center gap-2 text-white flex-1 text-left"
                           >
                             <Folder
@@ -845,17 +859,23 @@ export default function DashboardPage() {
                           </button>
                           <div className="flex items-center gap-1">
                             <Button
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setEditingFolderId(folder.id);
                                 setEditingFolderName(folder.name);
                               }}
+                              onMouseDown={(e) => e.stopPropagation()}
                               variant="ghost"
                               className="text-white/60 hover:text-white hover:bg-white/20 h-6 w-6 p-0"
                             >
                               <Edit2 className="h-3 w-3" />
                             </Button>
                             <Button
-                              onClick={() => handleDeleteFolder(folder.id, folder.name)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteFolder(folder.id, folder.name);
+                              }}
+                              onMouseDown={(e) => e.stopPropagation()}
                               variant="ghost"
                               className="text-white/60 hover:text-white hover:bg-white/20 h-6 w-6 p-0"
                             >
@@ -910,10 +930,7 @@ export default function DashboardPage() {
                           <div className="space-y-3 flex-1">
                             <div className="flex items-center gap-2">
                               <GripVertical className="h-4 w-4 text-white/40 cursor-move" />
-                              <Link
-                                href={`/documents/${doc.id}`}
-                                className="group block flex-1"
-                              >
+                              <div className="flex-1">
                                 <div className="flex items-center gap-3">
                                   <span className="rounded-lg border border-white/25 bg-white/10 px-2 py-1 text-xs font-medium text-white/70">
                                     {doc.fileType.toUpperCase()}
@@ -963,12 +980,15 @@ export default function DashboardPage() {
                                     <h3 className="mt-2 text-xl font-semibold text-white">
                                       {doc.fileName}
                                     </h3>
-                                    <p className="mt-2 inline-flex items-center gap-2 text-sm text-white/70 transition group-hover:text-white/80">
+                                    <Link
+                                      href={`/documents/${doc.id}`}
+                                      className="mt-2 inline-flex items-center gap-2 text-sm text-white/70 hover:text-white/90 transition"
+                                    >
                                       Open study workspace <span aria-hidden>→</span>
-                                    </p>
+                                    </Link>
                                   </>
                                 )}
-                              </Link>
+                              </div>
                             </div>
                           </div>
                           <div className="flex flex-col items-start gap-3 sm:items-end">
