@@ -59,6 +59,7 @@ export default function DashboardPage() {
   const [renamingDocumentId, setRenamingDocumentId] = useState<string | null>(null);
   const [renamingDocumentName, setRenamingDocumentName] = useState("");
   const [draggedDocumentId, setDraggedDocumentId] = useState<string | null>(null);
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
 
   const clearPolling = useCallback(() => {
     if (pollingTimeoutRef.current) {
@@ -427,8 +428,28 @@ export default function DashboardPage() {
     e.dataTransfer.dropEffect = "move";
   };
 
+  const handleDragEnter = (e: React.DragEvent, folderId: string | null) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (draggedDocumentId) {
+      setDragOverFolderId(folderId);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    // Only clear if we're leaving the folder element itself, not a child
+    const currentTarget = e.currentTarget as HTMLElement;
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    if (!currentTarget.contains(relatedTarget)) {
+      setDragOverFolderId(null);
+    }
+  };
+
   const handleDrop = (e: React.DragEvent, targetFolderId: string | null) => {
     e.preventDefault();
+    e.stopPropagation();
+    setDragOverFolderId(null);
     if (draggedDocumentId) {
       handleMoveDocument(draggedDocumentId, targetFolderId);
       setDraggedDocumentId(null);
@@ -773,32 +794,45 @@ export default function DashboardPage() {
                 <div className="space-y-2">
                   <button
                     onClick={() => setSelectedFolderId(null)}
-                    className={`w-full text-left p-2 rounded-lg transition ${
+                    className={`w-full text-left p-2 rounded-lg transition-all duration-200 ${
                       selectedFolderId === null
                         ? "bg-white/20 border border-white/30"
+                        : dragOverFolderId === null && draggedDocumentId
+                        ? "bg-white/15 border-2 border-dashed border-purple-400/60 shadow-lg shadow-purple-500/20"
                         : "bg-white/10 border border-white/10 hover:bg-white/15"
                     }`}
                     onDragOver={handleDragOver}
+                    onDragEnter={(e) => handleDragEnter(e, null)}
+                    onDragLeave={handleDragLeave}
                     onDrop={(e) => handleDrop(e, null)}
                   >
                     <div className="flex items-center gap-2 text-white">
                       <Folder className="h-4 w-4" />
                       <span className="text-sm font-medium">All Documents</span>
+                      {dragOverFolderId === null && draggedDocumentId && (
+                        <span className="ml-auto text-xs text-purple-300 font-medium animate-pulse">
+                          Drop here
+                        </span>
+                      )}
                     </div>
                   </button>
 
                   {folders.map((folder) => (
                     <div
                       key={folder.id}
-                      className={`p-2 rounded-lg transition ${
+                      className={`p-2 rounded-lg transition-all duration-200 ${
                         selectedFolderId === folder.id
                           ? "bg-white/20 border border-white/30"
+                          : dragOverFolderId === folder.id && draggedDocumentId
+                          ? "bg-white/20 border-2 border-dashed border-purple-400/60 shadow-lg shadow-purple-500/20 scale-[1.02]"
                           : "bg-white/10 border border-white/10 hover:bg-white/15"
                       }`}
                       onDragOver={(e) => {
                         e.preventDefault();
                         handleDragOver(e);
                       }}
+                      onDragEnter={(e) => handleDragEnter(e, folder.id)}
+                      onDragLeave={handleDragLeave}
                       onDrop={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -852,10 +886,19 @@ export default function DashboardPage() {
                             className="flex items-center gap-2 text-white flex-1 text-left"
                           >
                             <Folder
-                              className="h-4 w-4"
-                              style={{ color: folder.color }}
+                              className={`h-4 w-4 transition-transform ${
+                                dragOverFolderId === folder.id && draggedDocumentId
+                                  ? "scale-110"
+                                  : ""
+                              }`}
+                              style={{ color: dragOverFolderId === folder.id && draggedDocumentId ? "#a78bfa" : folder.color }}
                             />
                             <span className="text-sm font-medium">{folder.name}</span>
+                            {dragOverFolderId === folder.id && draggedDocumentId && (
+                              <span className="ml-auto text-xs text-purple-300 font-medium animate-pulse">
+                                Drop here
+                              </span>
+                            )}
                           </button>
                           <div className="flex items-center gap-1">
                             <Button
@@ -922,8 +965,19 @@ export default function DashboardPage() {
                     <Card
                       key={doc.id}
                       draggable
-                      onDragStart={(e: React.DragEvent) => handleDragStart(e, doc.id)}
-                      className="border border-white/15 bg-white/10 backdrop-blur-xl transition hover:border-white/30 hover:bg-white/16"
+                      onDragStart={(e: React.DragEvent) => {
+                        handleDragStart(e, doc.id);
+                        e.dataTransfer.effectAllowed = "move";
+                      }}
+                      onDragEnd={() => {
+                        setDraggedDocumentId(null);
+                        setDragOverFolderId(null);
+                      }}
+                      className={`border border-white/15 bg-white/10 backdrop-blur-xl transition-all ${
+                        draggedDocumentId === doc.id
+                          ? "opacity-50 scale-95"
+                          : "hover:border-white/30 hover:bg-white/16"
+                      }`}
                     >
                       <CardContent className="p-5">
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
