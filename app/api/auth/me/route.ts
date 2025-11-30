@@ -23,9 +23,8 @@ export async function GET(request: NextRequest) {
         // Get avatar URL if exists
         let avatarUrl = null;
         if (user.avatar) {
-          const { getSignedUrl } = await import("@/lib/s3");
-          const s3 = (await import("aws-sdk")).default;
-          const s3Client = new s3.S3({
+          const AWS = await import("aws-sdk");
+          const s3Client = new AWS.S3({
             accessKeyId: process.env.AWS_ACCESS_KEY_ID,
             secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
             region: process.env.AWS_REGION || "us-east-1",
