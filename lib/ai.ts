@@ -201,12 +201,14 @@ ${content}`;
  * Generates multiple-choice quiz questions from educational content using AI
  * @param content - The text content to create questions from (should be under 10,000 characters)
  * @param count - Number of questions to generate (default: 5)
+ * @param previousQuestions - Optional text containing previously generated questions to avoid duplicates
  * @returns Promise resolving to an array of quiz question objects
  * @throws {Error} If API key is missing or AI generation fails (returns empty array on parse errors)
  */
 export async function generateQuizQuestions(
   content: string,
-  count: number = 5
+  count: number = 5,
+  previousQuestions?: string | null
 ): Promise<
   Array<{
     question: string;
@@ -215,6 +217,10 @@ export async function generateQuizQuestions(
     explanation?: string;
   }>
 > {
+  const avoidDuplicatesSection = previousQuestions
+    ? `\n\nIMPORTANT: The following questions have already been generated for this document. DO NOT create questions that are similar or identical to these:\n\n${previousQuestions}\n\nCreate completely new and different questions that test different aspects of the content.`
+    : "";
+
   const prompt = `You are an expert at creating academic quiz questions. Generate exactly ${count} multiple-choice questions that focus on:
 - Key concepts, theories, definitions, and principles
 - Important facts, formulas, and relationships
@@ -249,7 +255,7 @@ Example format:
   ]
 }
 
-Please create ${count} academic quiz questions from the following content:
+Please create ${count} academic quiz questions from the following content:${avoidDuplicatesSection}
 
 ${content}`;
 

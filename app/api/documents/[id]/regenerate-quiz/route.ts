@@ -74,11 +74,21 @@ export async function POST(
         ? extractedText.substring(0, maxLength) + "..."
         : extractedText;
 
+    // Get existing quiz questions before deleting (to avoid duplicates)
+    const existingQuestions = await QuizQuestion.find({
+      documentId: document._id,
+      userId,
+    }).select("question");
+
     // Delete existing quiz questions
     await QuizQuestion.deleteMany({ documentId: document._id, userId });
 
-    // Generate new quiz questions (5 questions)
-    const questions = await generateQuizQuestions(truncatedText, 5);
+    // Generate new quiz questions (5 questions) with previous questions context
+    const previousQuestionsText = existingQuestions.length > 0
+      ? existingQuestions.map((q, i) => `${i + 1}. ${q.question}`).join("\n")
+      : null;
+
+    const questions = await generateQuizQuestions(truncatedText, 5, previousQuestionsText);
 
     if (questions && questions.length > 0) {
       await QuizQuestion.insertMany(
