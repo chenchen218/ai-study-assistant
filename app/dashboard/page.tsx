@@ -474,6 +474,19 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              {user?.avatarUrl || user?.picture ? (
+                <img
+                  src={user?.avatarUrl || user?.picture || ""}
+                  alt="Avatar"
+                  className="w-8 h-8 rounded-full object-cover border-2 border-white/30"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-white/20 border-2 border-white/30 flex items-center justify-center">
+                  <span className="text-white text-xs font-semibold">
+                    {user?.name?.charAt(0).toUpperCase() || "U"}
+                  </span>
+                </div>
+              )}
               <span className="hidden sm:inline text-white/90 font-medium">
                 Welcome, {user?.name}
               </span>
