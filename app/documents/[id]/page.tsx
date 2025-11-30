@@ -443,6 +443,46 @@ export default function DocumentPage() {
     setQuestionStartTime(Date.now());
   };
 
+  const handleRegenerateQuiz = async () => {
+    if (!documentId || !data) return;
+    
+    setIsRegeneratingQuiz(true);
+    try {
+      const response = await fetch(`/api/documents/${documentId}/regenerate-quiz`, {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        // Update the data with new quiz questions
+        setData((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            quizQuestions: result.quizQuestions,
+          };
+        });
+        // Reset quiz state
+        setCurrentQuestionIndex(0);
+        setQuizSelectedAnswer(null);
+        setQuizShowResult(false);
+        setQuizCompleted(false);
+        setQuizScore(0);
+        setQuestionStartTime(Date.now());
+        alert("Quiz regenerated successfully!");
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || "Failed to regenerate quiz. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error regenerating quiz:", error);
+      alert("Failed to regenerate quiz. Please try again.");
+    } finally {
+      setIsRegeneratingQuiz(false);
+    }
+  };
+
   const handleAskQuestion = async () => {
     const trimmedQuestion = question.trim();
     if (!trimmedQuestion) return;
