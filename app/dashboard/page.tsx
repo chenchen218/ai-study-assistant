@@ -12,14 +12,24 @@ import {
   CardHeader,
   CardTitle,
 } from "../components/ui/card";
-import { BookOpen, Upload, Search, X } from "lucide-react";
+import { BookOpen, Upload, Search, X, Folder, FolderPlus, Edit2, Trash2, GripVertical } from "lucide-react";
+import { Input } from "../components/ui/input";
 
 interface Document {
   id: string;
   fileName: string;
   fileType: string;
   status: string;
+  folderId: string | null;
   uploadedAt: string;
+}
+
+interface FolderType {
+  id: string;
+  name: string;
+  color: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export default function DashboardPage() {
@@ -40,11 +50,34 @@ export default function DashboardPage() {
   const pollingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "completed" | "processing" | "failed">("all");
+  const [folders, setFolders] = useState<FolderType[]>([]);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [showCreateFolder, setShowCreateFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
+  const [editingFolderName, setEditingFolderName] = useState("");
+  const [renamingDocumentId, setRenamingDocumentId] = useState<string | null>(null);
+  const [renamingDocumentName, setRenamingDocumentName] = useState("");
+  const [draggedDocumentId, setDraggedDocumentId] = useState<string | null>(null);
 
   const clearPolling = useCallback(() => {
     if (pollingTimeoutRef.current) {
       clearTimeout(pollingTimeoutRef.current);
       pollingTimeoutRef.current = null;
+    }
+  }, []);
+
+  const fetchFolders = useCallback(async () => {
+    try {
+      const response = await fetch("/api/folders", {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setFolders(data.folders || []);
+      }
+    } catch (error) {
+      console.error("Error fetching folders:", error);
     }
   }, []);
 
@@ -121,11 +154,12 @@ export default function DashboardPage() {
       return;
     }
     void fetchDocuments();
+    void fetchFolders();
 
     return () => {
       clearPolling();
     };
-  }, [user, router, fetchDocuments, clearPolling]);
+  }, [user, router, fetchDocuments, fetchFolders, clearPolling]);
 
   const uploadFile = async (file: File) => {
     if (!file) return;
@@ -192,7 +226,7 @@ export default function DashboardPage() {
     void uploadFile(file);
   };
 
-  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+  const handleFileDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
     const file = e.dataTransfer.files?.[0] || null;
@@ -234,6 +268,170 @@ export default function DashboardPage() {
       alert("Failed to delete document. Please try again.");
     } finally {
       setDeleting(null);
+    }
+  };
+
+  // Folder functions
+  const handleCreateFolder = async () => {
+    if (!newFolderName.trim()) {
+      setError("Folder name cannot be empty");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/folders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ name: newFolderName.trim() }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setFolders((prev) => [data.folder, ...prev]);
+        setNewFolderName("");
+        setShowCreateFolder(false);
+        setError("");
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || "Failed to create folder");
+      }
+    } catch (error) {
+      setError("Failed to create folder. Please try again.");
+    }
+  };
+
+  const handleRenameFolder = async (folderId: string) => {
+    if (!editingFolderName.trim()) {
+      setError("Folder name cannot be empty");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/folders/${folderId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ name: editingFolderName.trim() }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setFolders((prev) =>
+          prev.map((f) => (f.id === folderId ? data.folder : f))
+        );
+        setEditingFolderId(null);
+        setEditingFolderName("");
+        setError("");
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || "Failed to rename folder");
+      }
+    } catch (error) {
+      setError("Failed to rename folder. Please try again.");
+    }
+  };
+
+  const handleDeleteFolder = async (folderId: string, folderName: string) => {
+    if (
+      !confirm(
+        `Are you sure you want to delete folder "${folderName}"? Documents in this folder will be moved to root.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/folders/${folderId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        setFolders((prev) => prev.filter((f) => f.id !== folderId));
+        if (selectedFolderId === folderId) {
+          setSelectedFolderId(null);
+        }
+        void fetchDocuments(); // Refresh documents to update folderId
+        alert("Folder deleted successfully");
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || "Failed to delete folder");
+      }
+    } catch (error) {
+      alert("Failed to delete folder. Please try again.");
+    }
+  };
+
+  const handleRenameDocument = async (documentId: string) => {
+    if (!renamingDocumentName.trim()) {
+      setError("Document name cannot be empty");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/documents/${documentId}/rename`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ fileName: renamingDocumentName.trim() }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setDocuments((prev) =>
+          prev.map((d) => (d.id === documentId ? { ...d, fileName: data.document.fileName } : d))
+        );
+        setRenamingDocumentId(null);
+        setRenamingDocumentName("");
+        setError("");
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || "Failed to rename document");
+      }
+    } catch (error) {
+      setError("Failed to rename document. Please try again.");
+    }
+  };
+
+  const handleMoveDocument = async (documentId: string, targetFolderId: string | null) => {
+    try {
+      const response = await fetch(`/api/documents/${documentId}/move`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ folderId: targetFolderId }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setDocuments((prev) =>
+          prev.map((d) => (d.id === documentId ? { ...d, folderId: data.document.folderId } : d))
+        );
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || "Failed to move document");
+      }
+    } catch (error) {
+      setError("Failed to move document. Please try again.");
+    }
+  };
+
+  const handleDragStart = (e: React.DragEvent, documentId: string) => {
+    setDraggedDocumentId(documentId);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDrop = (e: React.DragEvent, targetFolderId: string | null) => {
+    e.preventDefault();
+    if (draggedDocumentId) {
+      handleMoveDocument(draggedDocumentId, targetFolderId);
+      setDraggedDocumentId(null);
     }
   };
 
@@ -364,7 +562,7 @@ export default function DashboardPage() {
                     }
                   }}
                   onDragLeave={() => setIsDragging(false)}
-                  onDrop={handleDrop}
+                  onDrop={handleFileDrop}
                   className={`mt-5 flex flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-all ${
                     isDragging
                       ? "border-white bg-white/10"
@@ -505,6 +703,159 @@ export default function DashboardPage() {
                 </div>
               </div>
 
+              {/* Folders Sidebar */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-white">Folders</h3>
+                  <Button
+                    onClick={() => {
+                      setShowCreateFolder(true);
+                      setNewFolderName("");
+                    }}
+                    className="bg-white/20 text-white hover:bg-white/30 border border-white/40 h-8 px-3 text-sm"
+                  >
+                    <FolderPlus className="h-4 w-4 mr-1" />
+                    New
+                  </Button>
+                </div>
+
+                {showCreateFolder && (
+                  <div className="mb-4 p-3 rounded-lg border border-white/20 bg-white/10 backdrop-blur-xl">
+                      <Input
+                        value={newFolderName}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewFolderName(e.target.value)}
+                        placeholder="Folder name"
+                        className="bg-white/20 border-white/30 text-white placeholder:text-white/60 focus:bg-white/30 mb-2"
+                        onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                        if (e.key === "Enter") {
+                          handleCreateFolder();
+                        } else if (e.key === "Escape") {
+                          setShowCreateFolder(false);
+                          setNewFolderName("");
+                        }
+                      }}
+                      autoFocus
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleCreateFolder}
+                        className="bg-white/20 text-white hover:bg-white/30 border border-white/40 h-8 px-3 text-sm"
+                      >
+                        Create
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setShowCreateFolder(false);
+                          setNewFolderName("");
+                        }}
+                        variant="ghost"
+                        className="text-white/80 hover:text-white hover:bg-white/20 h-8 px-3 text-sm"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <button
+                    onClick={() => setSelectedFolderId(null)}
+                    className={`w-full text-left p-2 rounded-lg transition ${
+                      selectedFolderId === null
+                        ? "bg-white/20 border border-white/30"
+                        : "bg-white/10 border border-white/10 hover:bg-white/15"
+                    }`}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, null)}
+                  >
+                    <div className="flex items-center gap-2 text-white">
+                      <Folder className="h-4 w-4" />
+                      <span className="text-sm font-medium">All Documents</span>
+                    </div>
+                  </button>
+
+                  {folders.map((folder) => (
+                    <div
+                      key={folder.id}
+                      className={`p-2 rounded-lg transition ${
+                        selectedFolderId === folder.id
+                          ? "bg-white/20 border border-white/30"
+                          : "bg-white/10 border border-white/10 hover:bg-white/15"
+                      }`}
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleDrop(e, folder.id)}
+                    >
+                      {editingFolderId === folder.id ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            value={editingFolderName}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditingFolderName(e.target.value)}
+                            className="bg-white/20 border-white/30 text-white placeholder:text-white/60 focus:bg-white/30 h-8 text-sm"
+                            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                              if (e.key === "Enter") {
+                                handleRenameFolder(folder.id);
+                              } else if (e.key === "Escape") {
+                                setEditingFolderId(null);
+                                setEditingFolderName("");
+                              }
+                            }}
+                            autoFocus
+                          />
+                          <Button
+                            onClick={() => handleRenameFolder(folder.id)}
+                            className="bg-white/20 text-white hover:bg-white/30 border border-white/40 h-8 px-2"
+                          >
+                            ✓
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              setEditingFolderId(null);
+                              setEditingFolderName("");
+                            }}
+                            variant="ghost"
+                            className="text-white/80 hover:text-white hover:bg-white/20 h-8 px-2"
+                          >
+                            ✕
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <button
+                            onClick={() => setSelectedFolderId(folder.id)}
+                            className="flex items-center gap-2 text-white flex-1 text-left"
+                          >
+                            <Folder
+                              className="h-4 w-4"
+                              style={{ color: folder.color }}
+                            />
+                            <span className="text-sm font-medium">{folder.name}</span>
+                          </button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              onClick={() => {
+                                setEditingFolderId(folder.id);
+                                setEditingFolderName(folder.name);
+                              }}
+                              variant="ghost"
+                              className="text-white/60 hover:text-white hover:bg-white/20 h-6 w-6 p-0"
+                            >
+                              <Edit2 className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              onClick={() => handleDeleteFolder(folder.id, folder.name)}
+                              variant="ghost"
+                              className="text-white/60 hover:text-white hover:bg-white/20 h-6 w-6 p-0"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {loading ? (
                 <Card className="border border-white/20 bg-white/10 py-12 text-center text-white/80 backdrop-blur-xl">
                   <p>Fetching your study materials...</p>
@@ -514,14 +865,18 @@ export default function DashboardPage() {
                   <p>No documents yet. Upload a file to start learning!</p>
                 </Card>
               ) : (() => {
-                // Filter documents based on search query and status
+                // Filter documents based on search query, status, and folder
                 const filteredDocuments = documents.filter((doc) => {
                   const matchesSearch =
                     searchQuery === "" ||
                     doc.fileName.toLowerCase().includes(searchQuery.toLowerCase());
                   const matchesStatus =
                     statusFilter === "all" || doc.status === statusFilter;
-                  return matchesSearch && matchesStatus;
+                  const matchesFolder =
+                    selectedFolderId === null
+                      ? true
+                      : doc.folderId === selectedFolderId;
+                  return matchesSearch && matchesStatus && matchesFolder;
                 });
 
                 return filteredDocuments.length === 0 ? (
@@ -533,33 +888,75 @@ export default function DashboardPage() {
                     {filteredDocuments.map((doc) => (
                     <Card
                       key={doc.id}
+                      draggable
+                      onDragStart={(e: React.DragEvent) => handleDragStart(e, doc.id)}
                       className="border border-white/15 bg-white/10 backdrop-blur-xl transition hover:border-white/30 hover:bg-white/16"
                     >
                       <CardContent className="p-5">
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                          <div className="space-y-3">
-                            <Link
-                              href={`/documents/${doc.id}`}
-                              className="group block"
-                            >
-                              <div className="flex items-center gap-3">
-                                <span className="rounded-lg border border-white/25 bg-white/10 px-2 py-1 text-xs font-medium text-white/70">
-                                  {doc.fileType.toUpperCase()}
-                                </span>
-                                <span className="text-sm text-white/70 font-medium">
-                                  Updated{" "}
-                                  {new Date(
-                                    doc.uploadedAt
-                                  ).toLocaleDateString()}
-                                </span>
-                              </div>
-                              <h3 className="mt-2 text-xl font-semibold text-white">
-                                {doc.fileName}
-                              </h3>
-                              <p className="mt-2 inline-flex items-center gap-2 text-sm text-white/70 transition group-hover:text-white/80">
-                                Open study workspace <span aria-hidden>→</span>
-                              </p>
-                            </Link>
+                          <div className="space-y-3 flex-1">
+                            <div className="flex items-center gap-2">
+                              <GripVertical className="h-4 w-4 text-white/40 cursor-move" />
+                              <Link
+                                href={`/documents/${doc.id}`}
+                                className="group block flex-1"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <span className="rounded-lg border border-white/25 bg-white/10 px-2 py-1 text-xs font-medium text-white/70">
+                                    {doc.fileType.toUpperCase()}
+                                  </span>
+                                  <span className="text-sm text-white/70 font-medium">
+                                    Updated{" "}
+                                    {new Date(
+                                      doc.uploadedAt
+                                    ).toLocaleDateString()}
+                                  </span>
+                                </div>
+                                {renamingDocumentId === doc.id ? (
+                                  <div className="mt-2 flex items-center gap-2">
+                                    <Input
+                                      value={renamingDocumentName}
+                                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRenamingDocumentName(e.target.value)}
+                                      className="bg-white/20 border-white/30 text-white placeholder:text-white/60 focus:bg-white/30 h-8 text-sm"
+                                      onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                                        if (e.key === "Enter") {
+                                          handleRenameDocument(doc.id);
+                                        } else if (e.key === "Escape") {
+                                          setRenamingDocumentId(null);
+                                          setRenamingDocumentName("");
+                                        }
+                                      }}
+                                      autoFocus
+                                    />
+                                    <Button
+                                      onClick={() => handleRenameDocument(doc.id)}
+                                      className="bg-white/20 text-white hover:bg-white/30 border border-white/40 h-8 px-2"
+                                    >
+                                      ✓
+                                    </Button>
+                                    <Button
+                                      onClick={() => {
+                                        setRenamingDocumentId(null);
+                                        setRenamingDocumentName("");
+                                      }}
+                                      variant="ghost"
+                                      className="text-white/80 hover:text-white hover:bg-white/20 h-8 px-2"
+                                    >
+                                      ✕
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <h3 className="mt-2 text-xl font-semibold text-white">
+                                      {doc.fileName}
+                                    </h3>
+                                    <p className="mt-2 inline-flex items-center gap-2 text-sm text-white/70 transition group-hover:text-white/80">
+                                      Open study workspace <span aria-hidden>→</span>
+                                    </p>
+                                  </>
+                                )}
+                              </Link>
+                            </div>
                           </div>
                           <div className="flex flex-col items-start gap-3 sm:items-end">
                             <span
@@ -573,17 +970,32 @@ export default function DashboardPage() {
                             >
                               {doc.status}
                             </span>
-                            <Button
-                              onClick={(e: MouseEvent<HTMLButtonElement>) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                handleDelete(doc.id, doc.fileName);
-                              }}
-                              disabled={deleting === doc.id}
-                              className="w-full rounded-lg border border-white/25 bg-white/15 px-4 py-2 text-sm text-white hover:bg-white/25 disabled:opacity-60 sm:w-auto"
-                            >
-                              {deleting === doc.id ? "Deleting..." : "Delete"}
-                            </Button>
+                            <div className="flex gap-2">
+                              {renamingDocumentId !== doc.id && (
+                                <Button
+                                  onClick={(e: MouseEvent<HTMLButtonElement>) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setRenamingDocumentId(doc.id);
+                                    setRenamingDocumentName(doc.fileName);
+                                  }}
+                                  className="rounded-lg border border-white/25 bg-white/15 px-3 py-2 text-sm text-white hover:bg-white/25"
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                              <Button
+                                onClick={(e: MouseEvent<HTMLButtonElement>) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleDelete(doc.id, doc.fileName);
+                                }}
+                                disabled={deleting === doc.id}
+                                className="rounded-lg border border-white/25 bg-white/15 px-4 py-2 text-sm text-white hover:bg-white/25 disabled:opacity-60"
+                              >
+                                {deleting === doc.id ? "Deleting..." : "Delete"}
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </CardContent>

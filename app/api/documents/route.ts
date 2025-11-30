@@ -290,6 +290,7 @@ export async function GET(request: NextRequest) {
       fileName: doc.fileName,
       fileType: doc.fileType,
       status: doc.status,
+      folderId: doc.folderId ? String(doc.folderId) : null,
       uploadedAt: doc.uploadedAt,
     }));
 

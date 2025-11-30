@@ -10,6 +10,8 @@ interface User {
   role: string;
   provider?: "local" | "google" | "github";
   picture?: string;
+  avatar?: string;
+  avatarUrl?: string;
   createdAt?: string;
 }
 

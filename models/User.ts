@@ -9,6 +9,7 @@ export interface IUser extends Document {
   googleId?: string;
   githubId?: string;
   picture?: string;
+  avatar?: string; // S3 key for user-uploaded avatar
   createdAt: Date;
   updatedAt: Date;
 }
@@ -55,6 +56,9 @@ const UserSchema: Schema = new Schema(
     },
     picture: {
       type: String,
+    },
+    avatar: {
+      type: String, // S3 key for user-uploaded avatar
     },
   },
   {

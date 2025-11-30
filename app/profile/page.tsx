@@ -39,6 +39,8 @@ export default function ProfilePage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
   useEffect(() => {
     if (authLoading) {
@@ -384,7 +386,140 @@ export default function ProfilePage() {
                   Account Information
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 text-sm">
+              <CardContent className="space-y-4 text-sm">
+                {/* Avatar Section */}
+                <div className="flex items-center gap-4 pb-4 border-b border-white/20">
+                  <div className="relative">
+                    {avatarPreview || user?.avatarUrl || user?.picture ? (
+                      <img
+                        src={avatarPreview || user?.avatarUrl || user?.picture || ""}
+                        alt="Avatar"
+                        className="w-20 h-20 rounded-full object-cover border-2 border-white/30"
+                      />
+                    ) : (
+                      <div className="w-20 h-20 rounded-full bg-white/20 border-2 border-white/30 flex items-center justify-center">
+                        <User className="h-10 w-10 text-white/60" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <label className="block mb-2">
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+
+                          // Validate file size (2MB)
+                          if (file.size > 2 * 1024 * 1024) {
+                            setError("Image size must be less than 2MB");
+                            return;
+                          }
+
+                          // Show preview
+                          const reader = new FileReader();
+                          reader.onload = (e) => {
+                            setAvatarPreview(e.target?.result as string);
+                          };
+                          reader.readAsDataURL(file);
+
+                          // Upload avatar
+                          setUploadingAvatar(true);
+                          setError("");
+                          setSuccess("");
+
+                          try {
+                            const formData = new FormData();
+                            formData.append("avatar", file);
+
+                            const response = await fetch("/api/profile/avatar", {
+                              method: "POST",
+                              credentials: "include",
+                              body: formData,
+                            });
+
+                            const data = await response.json();
+
+                            if (!response.ok) {
+                              setError(data.error || "Failed to upload avatar");
+                              setAvatarPreview(null);
+                              setUploadingAvatar(false);
+                              return;
+                            }
+
+                            setSuccess("Avatar uploaded successfully!");
+                            setUploadingAvatar(false);
+                            // Refresh user data
+                            window.location.reload();
+                          } catch (error: any) {
+                            console.error("Error uploading avatar:", error);
+                            setError("Failed to upload avatar. Please try again.");
+                            setAvatarPreview(null);
+                            setUploadingAvatar(false);
+                          }
+                        }}
+                        disabled={uploadingAvatar}
+                      />
+                      <Button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          const input = e.currentTarget.parentElement?.querySelector('input[type="file"]') as HTMLInputElement;
+                          input?.click();
+                        }}
+                        disabled={uploadingAvatar}
+                        className="bg-white/20 text-white hover:bg-white/30 border border-white/40"
+                      >
+                        {uploadingAvatar ? "Uploading..." : "Upload Avatar"}
+                      </Button>
+                    </label>
+                    {user?.avatar && (
+                      <Button
+                        type="button"
+                        onClick={async () => {
+                          if (!confirm("Are you sure you want to delete your avatar?")) {
+                            return;
+                          }
+
+                          setError("");
+                          setSuccess("");
+
+                          try {
+                            const response = await fetch("/api/profile/avatar", {
+                              method: "DELETE",
+                              credentials: "include",
+                            });
+
+                            const data = await response.json();
+
+                            if (!response.ok) {
+                              setError(data.error || "Failed to delete avatar");
+                              return;
+                            }
+
+                            setSuccess("Avatar deleted successfully!");
+                            setAvatarPreview(null);
+                            // Refresh user data
+                            window.location.reload();
+                          } catch (error: any) {
+                            console.error("Error deleting avatar:", error);
+                            setError("Failed to delete avatar. Please try again.");
+                          }
+                        }}
+                        variant="ghost"
+                        className="text-white/70 hover:text-white hover:bg-white/20 text-xs mt-1"
+                      >
+                        Delete Avatar
+                      </Button>
+                    )}
+                    <p className="text-xs text-white/60 mt-1">
+                      JPEG, PNG, GIF, or WebP. Max 2MB.
+                    </p>
+                  </div>
+                </div>
+
                 <div className="flex justify-between">
                   <span className="text-white/70">User Name:</span>
                   <span className="text-white font-medium">{user?.name}</span>

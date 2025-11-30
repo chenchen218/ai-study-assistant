@@ -8,6 +8,7 @@ export interface IDocument extends mongoose.Document {
   s3Key: string;
   s3Url: string;
   originalName: string;
+  folderId?: mongoose.Types.ObjectId;
   uploadedAt: Date;
   status: "processing" | "completed" | "failed";
 }
@@ -43,6 +44,11 @@ const DocumentSchema: Schema = new Schema(
     originalName: {
       type: String,
       required: true,
+    },
+    folderId: {
+      type: Schema.Types.ObjectId,
+      ref: "Folder",
+      default: null,
     },
     uploadedAt: {
       type: Date,

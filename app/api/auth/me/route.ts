@@ -20,17 +20,36 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    return NextResponse.json({
-      user: {
-        id: user._id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        provider: user.provider || "local",
-        picture: user.picture,
-        createdAt: user.createdAt,
-      },
-    });
+        // Get avatar URL if exists
+        let avatarUrl = null;
+        if (user.avatar) {
+          const { getSignedUrl } = await import("@/lib/s3");
+          const s3 = (await import("aws-sdk")).default;
+          const s3Client = new s3.S3({
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+            region: process.env.AWS_REGION || "us-east-1",
+          });
+          avatarUrl = s3Client.getSignedUrl("getObject", {
+            Bucket: process.env.AWS_S3_BUCKET_NAME || "ai-study-assistant-documents",
+            Key: user.avatar,
+            Expires: 3600 * 24 * 7, // 7 days
+          });
+        }
+
+        return NextResponse.json({
+          user: {
+            id: user._id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            provider: user.provider || "local",
+            picture: user.picture,
+            avatar: user.avatar,
+            avatarUrl: avatarUrl,
+            createdAt: user.createdAt,
+          },
+        });
   } catch (error: any) {
     console.error("Get user error:", error);
     return NextResponse.json(

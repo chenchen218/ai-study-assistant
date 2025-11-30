@@ -13,17 +13,19 @@ const BUCKET_NAME =
 /**
  * Uploads a file to AWS S3 bucket
  * @param file - File buffer to upload
- * @param fileName - Original file name (will be prefixed with UUID)
+ * @param fileName - Original file name (will be prefixed with UUID) or custom key
  * @param contentType - MIME type of the file (e.g., "application/pdf")
+ * @param customKey - Optional custom S3 key (if provided, fileName is ignored for key generation)
  * @returns Promise resolving to object with S3 key and signed URL (valid for 7 days)
  * @throws {Error} If S3 upload fails
  */
 export async function uploadToS3(
   file: Buffer,
   fileName: string,
-  contentType: string
+  contentType: string,
+  customKey?: string
 ): Promise<{ key: string; url: string }> {
-  const key = `documents/${uuidv4()}-${fileName}`;
+  const key = customKey || `documents/${uuidv4()}-${fileName}`;
 
   const params: AWS.S3.PutObjectRequest = {
     Bucket: BUCKET_NAME,
