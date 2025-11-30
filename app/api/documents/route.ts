@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
           console.error("❌ Error generating flashcards:", err?.message || err);
           throw err;
         }),
-      generateQuizQuestions(truncatedText, 10)
+      generateQuizQuestions(truncatedText, 5)
         .then(async (questions) => {
           if (questions && questions.length > 0) {
             await QuizQuestion.insertMany(

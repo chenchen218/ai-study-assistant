@@ -77,8 +77,8 @@ export async function POST(
     // Delete existing quiz questions
     await QuizQuestion.deleteMany({ documentId: document._id, userId });
 
-    // Generate new quiz questions (10 questions)
-    const questions = await generateQuizQuestions(truncatedText, 10);
+    // Generate new quiz questions (5 questions)
+    const questions = await generateQuizQuestions(truncatedText, 5);
 
     if (questions && questions.length > 0) {
       await QuizQuestion.insertMany(
