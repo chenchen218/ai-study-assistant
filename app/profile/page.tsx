@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../components/ui/card";
-import { User, Mail, Trash2, ArrowLeft, Lock, Calendar, FileText, Clock, Award, Shield } from "lucide-react";
+import { User, Mail, Trash2, ArrowLeft, Lock, Calendar, FileText, Clock, Award, Shield, BookOpen, Zap, Flame } from "lucide-react";
 
 export default function ProfilePage() {
   const { user, logout, loading: authLoading } = useAuth();
@@ -555,28 +555,73 @@ export default function ProfilePage() {
               </CardHeader>
               <CardContent>
                 {stats ? (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-white">{stats.documentCount}</div>
-                      <div className="text-xs text-white/70 mt-1">Documents</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-white">
-                        {Math.round(stats.totalStudyTime / 60)}h
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Documents Stat */}
+                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500/30 to-fuchsia-500/30 border border-white/20 p-4 backdrop-blur-sm hover:from-purple-500/40 hover:to-fuchsia-500/40 transition-all duration-300">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-3xl font-bold text-white mb-1">
+                            {stats.documentCount}
+                          </div>
+                          <div className="text-xs font-medium text-white/80">Documents</div>
+                        </div>
+                        <div className="p-2 rounded-lg bg-white/20">
+                          <BookOpen className="h-5 w-5 text-white" />
+                        </div>
                       </div>
-                      <div className="text-xs text-white/70 mt-1">Study Time</div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-white">{stats.quizCount}</div>
-                      <div className="text-xs text-white/70 mt-1">Quizzes</div>
+
+                    {/* Study Time Stat */}
+                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500/30 to-cyan-500/30 border border-white/20 p-4 backdrop-blur-sm hover:from-blue-500/40 hover:to-cyan-500/40 transition-all duration-300">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-3xl font-bold text-white mb-1">
+                            {stats.totalStudyTime >= 3600
+                              ? `${Math.floor(stats.totalStudyTime / 3600)}h ${Math.floor((stats.totalStudyTime % 3600) / 60)}m`
+                              : stats.totalStudyTime >= 60
+                              ? `${Math.floor(stats.totalStudyTime / 60)}m`
+                              : `${stats.totalStudyTime}s`}
+                          </div>
+                          <div className="text-xs font-medium text-white/80">Study Time</div>
+                        </div>
+                        <div className="p-2 rounded-lg bg-white/20">
+                          <Clock className="h-5 w-5 text-white" />
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-white">{stats.studyStreak}</div>
-                      <div className="text-xs text-white/70 mt-1">Day Streak</div>
+
+                    {/* Quizzes Stat */}
+                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500/30 to-teal-500/30 border border-white/20 p-4 backdrop-blur-sm hover:from-emerald-500/40 hover:to-teal-500/40 transition-all duration-300">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-3xl font-bold text-white mb-1">
+                            {stats.quizCount}
+                          </div>
+                          <div className="text-xs font-medium text-white/80">Quizzes</div>
+                        </div>
+                        <div className="p-2 rounded-lg bg-white/20">
+                          <Zap className="h-5 w-5 text-white" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Day Streak Stat */}
+                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-orange-500/30 to-red-500/30 border border-white/20 p-4 backdrop-blur-sm hover:from-orange-500/40 hover:to-red-500/40 transition-all duration-300">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-3xl font-bold text-white mb-1">
+                            {stats.studyStreak}
+                          </div>
+                          <div className="text-xs font-medium text-white/80">Day Streak</div>
+                        </div>
+                        <div className="p-2 rounded-lg bg-white/20">
+                          <Flame className="h-5 w-5 text-white" />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center text-white/70 text-sm">Loading statistics...</div>
+                  <div className="text-center text-white/70 py-8">Loading statistics...</div>
                 )}
               </CardContent>
             </Card>
