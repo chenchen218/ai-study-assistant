@@ -54,7 +54,7 @@ export default function ForgotPasswordPage() {
         return;
       }
 
-      setSuccess(data.message || "Password reset code sent to your email!");
+      setSuccess(data.message || "Password reset code has been sent to your email.");
       setCodeSent(true);
       setStep("reset");
       setSendingCode(false);

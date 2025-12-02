@@ -3,6 +3,9 @@ import connectDB from "@/lib/db";
 import { User } from "@/models/User";
 import { generateToken } from "@/lib/auth";
 
+// Force dynamic rendering since we use request.url
+export const dynamic = 'force-dynamic';
+
 /**
  * Handles GitHub OAuth callback
  * Exchanges authorization code for user info and creates/logs in user
@@ -16,25 +19,30 @@ export async function GET(request: NextRequest) {
     const state = searchParams.get("state");
     const error = searchParams.get("error");
 
+    // Get base URL from environment or request headers
+    const protocol = request.headers.get("x-forwarded-proto") || (request.url.startsWith("https") ? "https" : "http");
+    const host = request.headers.get("host") || request.headers.get("x-forwarded-host");
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (host ? `${protocol}://${host}` : "http://localhost:3000");
+
     if (error) {
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/login?error=${encodeURIComponent(error)}`
+        `${baseUrl}/login?error=${encodeURIComponent(error)}`
       );
     }
 
     if (!code) {
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/login?error=no_code`
+        `${baseUrl}/login?error=no_code`
       );
     }
 
     const clientId = process.env.GITHUB_CLIENT_ID;
     const clientSecret = process.env.GITHUB_CLIENT_SECRET;
-    const redirectUri = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/auth/oauth/github/callback`;
+    const redirectUri = `${baseUrl}/api/auth/oauth/github/callback`;
 
     if (!clientId || !clientSecret) {
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/login?error=oauth_not_configured`
+        `${baseUrl}/login?error=oauth_not_configured`
       );
     }
 
@@ -57,7 +65,7 @@ export async function GET(request: NextRequest) {
       const errorData = await tokenResponse.text();
       console.error("GitHub token exchange error:", errorData);
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/login?error=token_exchange_failed`
+        `${baseUrl}/login?error=token_exchange_failed`
       );
     }
 
@@ -66,7 +74,7 @@ export async function GET(request: NextRequest) {
 
     if (!accessToken) {
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/login?error=no_access_token`
+        `${baseUrl}/login?error=no_access_token`
       );
     }
 
@@ -80,7 +88,7 @@ export async function GET(request: NextRequest) {
 
     if (!userInfoResponse.ok) {
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/login?error=user_info_failed`
+        `${baseUrl}/login?error=user_info_failed`
       );
     }
 
@@ -104,7 +112,7 @@ export async function GET(request: NextRequest) {
 
     if (!email) {
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/login?error=no_email`
+        `${baseUrl}/login?error=no_email`
       );
     }
 
@@ -142,13 +150,14 @@ export async function GET(request: NextRequest) {
     });
 
     // Redirect to dashboard with token in cookie
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
     const response = NextResponse.redirect(`${baseUrl}/dashboard`);
 
     // Set cookie with proper configuration
+    // Use secure: true for HTTPS (production), secure: false for HTTP (development)
+    const isSecure = baseUrl.startsWith("https://");
     response.cookies.set("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isSecure,
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: "/",
@@ -163,8 +172,12 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (error: any) {
     console.error("GitHub OAuth callback error:", error);
+    // Get base URL for error redirect
+    const protocol = request.headers.get("x-forwarded-proto") || (request.url.startsWith("https") ? "https" : "http");
+    const host = request.headers.get("host") || request.headers.get("x-forwarded-host");
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (host ? `${protocol}://${host}` : "http://localhost:3000");
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/login?error=${encodeURIComponent(error.message || "oauth_error")}`
+      `${baseUrl}/login?error=${encodeURIComponent(error.message || "oauth_error")}`
     );
   }
 }

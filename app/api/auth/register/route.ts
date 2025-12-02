@@ -90,12 +90,17 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
 
+    // Get base URL to determine if we should use secure cookies
+    const protocol = request.headers.get("x-forwarded-proto") || (request.url.startsWith("https") ? "https" : "http");
+    const isSecure = protocol === "https";
+
     // Set cookie
     response.cookies.set("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isSecure,
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: "/",
     });
 
     return response;

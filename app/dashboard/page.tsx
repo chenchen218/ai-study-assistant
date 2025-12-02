@@ -51,7 +51,9 @@ export default function DashboardPage() {
   const fetchDocuments = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/documents");
+      const response = await fetch("/api/documents", {
+        credentials: "include", // Include cookies for authentication
+      });
       if (response.ok) {
         const data = await response.json();
         setDocuments(data.documents);
@@ -66,7 +68,9 @@ export default function DashboardPage() {
   const pollDocumentStatus = useCallback(
     async (documentId: string) => {
       try {
-        const response = await fetch(`/api/documents/${documentId}`);
+        const response = await fetch(`/api/documents/${documentId}`, {
+          credentials: "include", // Include cookies for authentication
+        });
         if (response.ok) {
           const payload = await response.json();
           const status: string | undefined = payload.document?.status;
@@ -131,6 +135,13 @@ export default function DashboardPage() {
       return;
     }
 
+    // Check file size (10MB limit)
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+    if (file.size > MAX_FILE_SIZE) {
+      setError(`File is too large. Maximum file size is 10MB. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB.`);
+      return;
+    }
+
     setUploading(true);
     setError("");
 
@@ -141,6 +152,7 @@ export default function DashboardPage() {
       const response = await fetch("/api/documents", {
         method: "POST",
         body: formData,
+        credentials: "include", // Include cookies for authentication
       });
 
       if (response.ok) {
@@ -202,6 +214,7 @@ export default function DashboardPage() {
     try {
       const response = await fetch(`/api/documents/${documentId}`, {
         method: "DELETE",
+        credentials: "include", // Include cookies for authentication
       });
 
       if (response.ok) {

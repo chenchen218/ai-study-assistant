@@ -3,6 +3,9 @@ import connectDB from "@/lib/db";
 import { EmailVerification } from "@/models/EmailVerification";
 import { rateLimiters } from "@/lib/rate-limit";
 
+// Force dynamic rendering since we use request.json
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/auth/verify-code
  * Verifies the email verification code

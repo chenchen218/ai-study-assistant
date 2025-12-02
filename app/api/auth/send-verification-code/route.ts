@@ -5,6 +5,9 @@ import { User } from "@/models/User";
 import { sendVerificationCode } from "@/lib/email";
 import { rateLimiters } from "@/lib/rate-limit";
 
+// Force dynamic rendering since we use request.json
+export const dynamic = 'force-dynamic';
+
 /**
  * Generates a random 6-digit verification code
  * @returns 6-digit code as string
@@ -76,11 +79,10 @@ export async function POST(request: NextRequest) {
       console.log(`✅ Verification code sent to: ${email}`);
     } catch (emailError: any) {
       console.error("❌ Error sending email:", emailError);
-      // Still return success to prevent email enumeration
-      // In production, you might want to handle this differently
+      console.error("❌ Full error:", JSON.stringify(emailError, null, 2));
       return NextResponse.json(
         {
-          error: "Failed to send verification email. Please check your email configuration.",
+          error: `Failed to send verification email: ${emailError.message || "Please check your email configuration."}`,
         },
         { status: 500 }
       );

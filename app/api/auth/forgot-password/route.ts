@@ -49,25 +49,23 @@ export async function POST(request: NextRequest) {
     // Check if user exists and has a password (local account)
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
-      // Don't reveal if user exists for security
+      // Return error if user doesn't exist
       return NextResponse.json(
         {
-          success: true,
-          message: "If an account exists with this email, a password reset code has been sent.",
+          error: "Email address not found",
         },
-        { status: 200 }
+        { status: 404 }
       );
     }
 
     // Check if user has a password (not OAuth-only account)
     if (!user.password) {
-      // Don't reveal account type for security
+      // Return error if user is OAuth-only (no password to reset)
       return NextResponse.json(
         {
-          success: true,
-          message: "If an account exists with this email, a password reset code has been sent.",
+          error: "This email is associated with a third-party account (Google/GitHub). Password reset is not available for OAuth accounts.",
         },
-        { status: 200 }
+        { status: 400 }
       );
     }
 
@@ -92,20 +90,18 @@ export async function POST(request: NextRequest) {
       console.log(`✅ Password reset code sent to: ${email}`);
     } catch (emailError: any) {
       console.error("❌ Error sending email:", emailError);
-      // Still return success to prevent email enumeration
       return NextResponse.json(
         {
-          success: true,
-          message: "If an account exists with this email, a password reset code has been sent.",
+          error: "Failed to send email. Please try again later.",
         },
-        { status: 200 }
+        { status: 500 }
       );
     }
 
     return NextResponse.json(
       {
         success: true,
-        message: "If an account exists with this email, a password reset code has been sent.",
+        message: "Password reset code has been sent to your email.",
       },
       { status: 200 }
     );

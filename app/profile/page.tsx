@@ -29,7 +29,6 @@ export default function ProfilePage() {
   const [codeSent, setCodeSent] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deletePassword, setDeletePassword] = useState("");
   const [stats, setStats] = useState<{
     documentCount: number;
     totalStudyTime: number;
@@ -307,14 +306,13 @@ export default function ProfilePage() {
    * Deletes user account
    */
   const handleDeleteAccount = async () => {
-    // For OAuth users, skip password confirmation
-    const isOAuthUser = user?.provider && user.provider !== "local";
-    
-    if (!showDeleteConfirm && !isOAuthUser) {
+    // First click: show confirmation
+    if (!showDeleteConfirm) {
       setShowDeleteConfirm(true);
       return;
     }
 
+    // Second click: confirm deletion
     setError("");
     setSuccess("");
     setLoading(true);
@@ -323,7 +321,6 @@ export default function ProfilePage() {
       const response = await fetch("/api/profile/delete-account", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: isOAuthUser ? undefined : deletePassword }),
       });
 
       const data = await response.json();
@@ -567,7 +564,7 @@ export default function ProfilePage() {
           </Card>
 
           {/* Change Password (only for local accounts) */}
-          {(!user?.provider || user.provider === "local") && (
+          {(!user?.provider || user.provider === "local" || user?.provider === undefined) && (
             <Card className="mb-4 bg-white/20 backdrop-blur-xl border-white/30">
               <CardHeader>
                 <CardTitle className="text-white flex items-center gap-2">
@@ -634,43 +631,36 @@ export default function ProfilePage() {
               <p className="text-red-100/80 text-sm">
                 Once you delete your account, there is no going back. All your data, documents, and progress will be permanently deleted.
               </p>
-              {showDeleteConfirm && user?.provider === "local" && (
-                <div>
-                  <label className="block text-sm font-medium text-red-100 mb-1">
-                    Confirm Password
-                  </label>
-                  <Input
-                    type="password"
-                    value={deletePassword}
-                    onChange={(e) => setDeletePassword(e.target.value)}
-                    placeholder="Enter your password to confirm"
-                    className="bg-white/20 border-white/30 text-white placeholder:text-white/60 focus:bg-white/30"
-                  />
+              {showDeleteConfirm && (
+                <div className="bg-red-400/20 border border-red-300/50 text-red-100 px-4 py-3 rounded-lg">
+                  <p className="font-semibold mb-1">⚠️ Are you sure?</p>
+                  <p className="text-sm">This action cannot be undone. All your data will be permanently deleted.</p>
                 </div>
               )}
-              <Button
-                onClick={handleDeleteAccount}
-                disabled={loading || (showDeleteConfirm && user?.provider === "local" && !deletePassword)}
-                className="bg-red-500/50 text-white hover:bg-red-500/70 border border-red-300/50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading
-                  ? "Deleting..."
-                  : showDeleteConfirm
-                  ? "Confirm Delete Account"
-                  : "Delete Account"}
-              </Button>
-              {showDeleteConfirm && (
+              <div className="flex gap-2">
                 <Button
-                  variant="ghost"
-                  onClick={() => {
-                    setShowDeleteConfirm(false);
-                    setDeletePassword("");
-                  }}
-                  className="text-red-100 hover:bg-red-500/30"
+                  onClick={handleDeleteAccount}
+                  disabled={loading}
+                  className="bg-red-500/50 text-white hover:bg-red-500/70 border border-red-300/50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Cancel
+                  {loading
+                    ? "Deleting..."
+                    : showDeleteConfirm
+                    ? "Confirm Delete Account"
+                    : "Delete Account"}
                 </Button>
-              )}
+                {showDeleteConfirm && (
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setShowDeleteConfirm(false);
+                    }}
+                    className="text-red-100 hover:bg-red-500/30"
+                  >
+                    Cancel
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>
