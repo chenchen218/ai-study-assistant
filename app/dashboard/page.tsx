@@ -5,6 +5,7 @@ import type { ChangeEvent, DragEvent, MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../providers/AuthProvider";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "../components/ui/button";
 import {
   Card,
@@ -496,10 +497,13 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-center gap-3">
               {user?.avatarUrl || user?.picture ? (
-                <img
+                <Image
                   src={user?.avatarUrl || user?.picture || ""}
                   alt="Avatar"
+                  width={32}
+                  height={32}
                   className="w-8 h-8 rounded-full object-cover border-2 border-white/30"
+                  unoptimized
                 />
               ) : (
                 <div className="w-8 h-8 rounded-full bg-white/20 border-2 border-white/30 flex items-center justify-center">

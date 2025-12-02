@@ -49,6 +49,8 @@ interface User {
   role: string;                  // User's role: "user" or "admin"
   provider?: "local" | "google" | "github"; // Authentication provider
   picture?: string;              // OAuth provider profile picture URL
+  avatar?: string;               // S3 key for uploaded avatar image
+  avatarUrl?: string;            // Signed URL for avatar image (temporary, expires)
   createdAt?: string;            // Account creation timestamp
 }
 

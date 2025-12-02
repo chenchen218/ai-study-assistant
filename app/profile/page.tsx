@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "../components/ui/card";
 import { User, Mail, Trash2, ArrowLeft, Lock, Calendar, FileText, Clock, Award, Shield, BookOpen, Zap, Flame } from "lucide-react";
+import Image from "next/image";
 
 export default function ProfilePage() {
   const { user, logout, loading: authLoading } = useAuth();
@@ -391,10 +392,13 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-4 pb-4 border-b border-white/20">
                   <div className="relative">
                     {avatarPreview || user?.avatarUrl || user?.picture ? (
-                      <img
+                      <Image
                         src={avatarPreview || user?.avatarUrl || user?.picture || ""}
                         alt="Avatar"
+                        width={80}
+                        height={80}
                         className="w-20 h-20 rounded-full object-cover border-2 border-white/30"
+                        unoptimized
                       />
                     ) : (
                       <div className="w-20 h-20 rounded-full bg-white/20 border-2 border-white/30 flex items-center justify-center">
