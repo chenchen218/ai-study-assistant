@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import connectDB from "@/lib/db";
-import { User } from "@/models/User";
-import { generateToken } from "@/lib/auth";
 
-// Force dynamic rendering since we use request.url
-export const dynamic = 'force-dynamic';
+// Force dynamic rendering so each invocation can compute the redirect URI
+export const dynamic = "force-dynamic";
 
 /**
  * Initiates Google OAuth login flow
@@ -12,13 +9,20 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  
-  // Get base URL from environment or request headers
-  const protocol = request.headers.get("x-forwarded-proto") || (request.url.startsWith("https") ? "https" : "http");
+
+  // Build the public-facing base URL, falling back to localhost for local dev
+  const protocol =
+    request.headers.get("x-forwarded-proto") ||
+    (request.url.startsWith("https") ? "https" : "http");
   const host = request.headers.get("host") || request.headers.get("x-forwarded-host");
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (host ? `${protocol}://${host}` : "http://localhost:3000");
-  
-  const redirectUri = searchParams.get("redirect_uri") || `${baseUrl}/api/auth/oauth/google/callback`;
+  const baseUrl =
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    (host ? `${protocol}://${host}` : "http://localhost:3000");
+
+  // Allow the caller to override the post-login landing page via ?redirect_uri=
+  const redirectUri =
+    searchParams.get("redirect_uri") ||
+    `${baseUrl}/api/auth/oauth/google/callback`;
 
   const clientId = process.env.GOOGLE_CLIENT_ID;
   if (!clientId) {
@@ -28,6 +32,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // Ask Google for basic identity (OpenID), email, and profile information
   const scope = "openid email profile";
   const state = Buffer.from(JSON.stringify({ redirect_uri: redirectUri })).toString("base64");
   

@@ -40,6 +40,22 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+  // Ensure Google/GitHub OAuth accounts cannot change their managed email locally
+    const currentUser = await User.findById(userId).select("email provider");
+    if (!currentUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    if (currentUser.provider && currentUser.provider !== "local") {
+      return NextResponse.json(
+        {
+          error:
+            "This account is managed by an OAuth provider. Please update your email in your Google or GitHub settings.",
+        },
+        { status: 403 }
+      );
+    }
+
     // Check if new email is already taken
     const existingUser = await User.findOne({ email: newEmail.toLowerCase() });
     if (existingUser && String(existingUser._id) !== userId) {
@@ -63,16 +79,10 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Get current user to get old email
-    const currentUser = await User.findById(userId);
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
     const oldEmail = currentUser.email;
 
     // Update email
-    const user = await User.findByIdAndUpdate(
+    await User.findByIdAndUpdate(
       userId,
       { email: newEmail.toLowerCase() },
       { new: true }

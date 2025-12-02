@@ -3,8 +3,8 @@ import connectDB from "@/lib/db";
 import { User } from "@/models/User";
 import { generateToken } from "@/lib/auth";
 
-// Force dynamic rendering since we use request.url
-export const dynamic = 'force-dynamic';
+// Force dynamic rendering so each request inspects its own callback URL
+export const dynamic = "force-dynamic";
 
 /**
  * Handles Google OAuth callback
@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
     const error = searchParams.get("error");
 
     // Get base URL from environment or request headers
+    // Reconstruct the public base URL so redirects behave correctly behind proxies
     const protocol = request.headers.get("x-forwarded-proto") || (request.url.startsWith("https") ? "https" : "http");
     const host = request.headers.get("host") || request.headers.get("x-forwarded-host");
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (host ? `${protocol}://${host}` : "http://localhost:3000");
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Exchange code for access token
+    // Exchange the one-time authorization code for an access token
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: {
@@ -72,7 +73,7 @@ export async function GET(request: NextRequest) {
     const tokens = await tokenResponse.json();
     const accessToken = tokens.access_token;
 
-    // Get user info from Google
+    // Fetch the Google profile so we can map it to a local user record
     const userInfoResponse = await fetch(
       "https://www.googleapis.com/oauth2/v2/userinfo",
       {
@@ -90,21 +91,21 @@ export async function GET(request: NextRequest) {
 
     const googleUser = await userInfoResponse.json();
 
-    // Find or create user
+    // Locate an existing account or create/link one using the Google identity
     let user = await User.findOne({ googleId: googleUser.id });
-    
+
     if (!user) {
       // Check if user exists with same email
       const existingUser = await User.findOne({ email: googleUser.email });
       if (existingUser) {
-        // Link Google account to existing user
+        // Link Google account to existing email-only user to preserve history
         existingUser.googleId = googleUser.id;
         existingUser.provider = "google";
         existingUser.picture = googleUser.picture;
         await existingUser.save();
         user = existingUser;
       } else {
-        // Create new user
+        // Create a brand-new account populated with Google profile data
         user = await User.create({
           email: googleUser.email,
           name: googleUser.name,
@@ -116,18 +117,17 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Generate JWT token
+    // Issue our own session token so the rest of the app treats this as a normal login
     const token = generateToken({
       userId: String(user._id),
       email: user.email,
       role: user.role,
     });
 
-    // Redirect to dashboard with token in cookie
+    // Send the user to the dashboard once the cookie is set
     const response = NextResponse.redirect(`${baseUrl}/dashboard`);
 
-    // Set cookie with proper configuration
-    // Use secure: true for HTTPS (production), secure: false for HTTP (development)
+    // Persist the JWT inside an httpOnly cookie; "secure" depends on the current scheme
     const isSecure = baseUrl.startsWith("https://");
     response.cookies.set("token", token, {
       httpOnly: true,
@@ -155,4 +155,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

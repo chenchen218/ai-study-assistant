@@ -39,6 +39,12 @@ export default function ProfilePage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
+  const isSocialAccount = user?.provider ? user.provider !== "local" : false;
+  const providerDisplayName = user?.provider
+    ? user.provider.charAt(0).toUpperCase() + user.provider.slice(1)
+    : "OAuth";
+  const oauthEmailRestrictionMessage = `This ${providerDisplayName} account is managed by ${providerDisplayName}. Update your email through your ${providerDisplayName} account settings.`;
+  const oauthPasswordRestrictionMessage = `Passwords for your ${providerDisplayName} account are managed by ${providerDisplayName}. Please update it from their security settings.`;
 
   useEffect(() => {
     if (authLoading) {
@@ -80,6 +86,10 @@ export default function ProfilePage() {
    * Sends verification code to new email
    */
   const handleSendCode = async () => {
+    if (isSocialAccount) {
+      setError(oauthEmailRestrictionMessage);
+      return;
+    }
     if (!newEmail) {
       setError("Please enter your new email first");
       return;
@@ -130,6 +140,10 @@ export default function ProfilePage() {
    * Verifies the code for email change
    */
   const handleVerifyCode = async () => {
+    if (isSocialAccount) {
+      setError(oauthEmailRestrictionMessage);
+      return;
+    }
     if (!verificationCode || verificationCode.length !== 6) {
       setError("Please enter a valid 6-digit code");
       return;
@@ -207,6 +221,10 @@ export default function ProfilePage() {
    * Updates user's email
    */
   const handleUpdateEmail = async () => {
+    if (isSocialAccount) {
+      setError(oauthEmailRestrictionMessage);
+      return;
+    }
     if (!emailVerified) {
       setError("Please verify your new email first");
       return;
@@ -253,6 +271,10 @@ export default function ProfilePage() {
    * Changes user's password
    */
   const handleChangePassword = async () => {
+    if (isSocialAccount) {
+      setError(oauthPasswordRestrictionMessage);
+      return;
+    }
     if (!currentPassword || !newPassword || !confirmPassword) {
       setError("All password fields are required");
       return;
@@ -486,6 +508,11 @@ export default function ProfilePage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {isSocialAccount && (
+                <div className="bg-amber-400/20 border border-amber-300/30 text-amber-100 px-4 py-2 rounded-lg text-sm">
+                  Email updates for {providerDisplayName} accounts must be made through your {providerDisplayName} account settings.
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-white/90 mb-1">
                   Current Email
@@ -511,12 +538,13 @@ export default function ProfilePage() {
                       setEmailVerified(false);
                     }}
                     placeholder="Enter new email"
-                    className="bg-white/20 border-white/30 text-white placeholder:text-white/60 focus:bg-white/30 flex-1"
+                    disabled={isSocialAccount}
+                    className="bg-white/20 border-white/30 text-white placeholder:text-white/60 focus:bg-white/30 flex-1 disabled:bg-white/10 disabled:border-white/20 disabled:text-white/50"
                   />
                   <Button
                     type="button"
                     onClick={handleSendCode}
-                    disabled={sendingCode || emailVerified || !newEmail}
+                    disabled={sendingCode || emailVerified || !newEmail || isSocialAccount}
                     className="bg-white/20 text-white hover:bg-white/30 border border-white/40 whitespace-nowrap"
                   >
                     {sendingCode ? "Sending..." : codeSent ? "Resend" : "Send Code"}
@@ -535,12 +563,13 @@ export default function ProfilePage() {
                       onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                       placeholder="Enter 6-digit code"
                       maxLength={6}
-                      className="bg-white/20 border-white/30 text-white placeholder:text-white/60 focus:bg-white/30 flex-1"
+                      disabled={isSocialAccount}
+                      className="bg-white/20 border-white/30 text-white placeholder:text-white/60 focus:bg-white/30 flex-1 disabled:bg-white/10 disabled:border-white/20 disabled:text-white/50"
                     />
                     <Button
                       type="button"
                       onClick={handleVerifyCode}
-                      disabled={verifyingCode || verificationCode.length !== 6}
+                      disabled={verifyingCode || verificationCode.length !== 6 || isSocialAccount}
                       className="bg-white/20 text-white hover:bg-white/30 border border-white/40 whitespace-nowrap"
                     >
                       {verifyingCode ? "Verifying..." : "Verify"}
@@ -555,7 +584,7 @@ export default function ProfilePage() {
               )}
               <Button
                 onClick={handleUpdateEmail}
-                disabled={loading || !emailVerified}
+                disabled={loading || !emailVerified || isSocialAccount}
                 className="bg-white/20 text-white hover:bg-white/30 border border-white/40 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? "Updating..." : "Update Email"}
@@ -615,6 +644,21 @@ export default function ProfilePage() {
                 >
                   {changingPassword ? "Changing..." : "Change Password"}
                 </Button>
+              </CardContent>
+            </Card>
+          )}
+          {isSocialAccount && (
+            <Card className="mb-4 bg-white/15 backdrop-blur-xl border-white/30">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Lock className="h-5 w-5" />
+                  Password Managed Externally
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-white/85">
+                  {oauthPasswordRestrictionMessage}
+                </p>
               </CardContent>
             </Card>
           )}
