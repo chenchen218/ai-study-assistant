@@ -1,43 +1,88 @@
+/**
+ * AI Content Generation Module
+ * 
+ * This module provides functions for generating educational content using Google's Gemini AI.
+ * It handles all AI-powered features including summaries, notes, flashcards, and quiz questions.
+ * 
+ * Features:
+ * - Automatic model selection with fallback support
+ * - Model caching for performance
+ * - Error handling and graceful degradation
+ * - JSON parsing with fallback strategies
+ * 
+ * Model Selection:
+ * The system tries multiple Gemini models in order of preference and caches the first working one.
+ * This ensures compatibility even when Google updates model names or availability.
+ * 
+ * Content Generation:
+ * - Summary: Comprehensive document overview
+ * - Notes: Detailed study notes with markdown formatting
+ * - Flashcards: Interactive Q&A cards for practice
+ * - Quiz Questions: Multiple-choice questions with explanations
+ * - Q&A: Contextual answers to user questions
+ * 
+ * @module lib/ai
+ */
+
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+// Get Gemini API key from environment variables
+// This key is required for all AI features
 const apiKey = process.env.GEMINI_API_KEY || "";
 
 if (!apiKey) {
   console.error("GEMINI_API_KEY is not set in environment variables");
 }
 
+// Initialize Google Generative AI client
 const genAI = new GoogleGenerativeAI(apiKey);
 
-// Try multiple models in order of preference
-// Cache the working model to avoid repeated API calls
+// Cache for the working model name
+// This avoids repeated API calls to test model availability
+// Once a working model is found, it's reused for all subsequent requests
 let cachedWorkingModel: string | null = null;
 
 /**
  * Gets a working Gemini AI model by trying multiple model names in order
- * Caches the working model to avoid repeated API calls
+ * 
+ * This function implements a fallback strategy to ensure compatibility:
+ * 1. Check if we have a cached working model (use it if available)
+ * 2. Try models in order of preference (latest → stable → experimental)
+ * 3. Test each model with a simple API call
+ * 4. Cache the first working model for future use
+ * 5. Throw error if no models work
+ * 
+ * Why this approach?
+ * - Google frequently updates model names and availability
+ * - Different regions may have different model availability
+ * - Caching reduces API calls and improves performance
+ * 
  * @returns Promise resolving to a configured Gemini model instance
  * @throws {Error} If no working model is found after trying all options
  */
 const getModel = async (): Promise<any> => {
-  // If we have a cached working model, use it
+  // If we have a cached working model, use it immediately
+  // This avoids unnecessary API calls
   if (cachedWorkingModel) {
     return genAI.getGenerativeModel({ model: cachedWorkingModel });
   }
 
   // Try models in order: latest stable, then alternatives
+  // Order matters: we prefer newer, more capable models first
   const modelsToTry = [
-    "models/gemini-2.5-flash-preview-05-20", // What test endpoint found
-    "models/gemini-2.5-flash", // Stable version
-    "models/gemini-2.0-flash-exp", // Experimental but available
-    "models/gemini-flash-latest", // Latest alias
-    "models/gemini-2.0-flash", // Alternative
+    "models/gemini-2.5-flash-preview-05-20", // Latest preview version
+    "models/gemini-2.5-flash",                 // Stable version
+    "models/gemini-2.0-flash-exp",            // Experimental but available
+    "models/gemini-flash-latest",             // Latest alias (may change)
+    "models/gemini-2.0-flash",                // Alternative stable version
   ];
 
   // Try each model until one works
   for (const modelName of modelsToTry) {
     try {
       const model = genAI.getGenerativeModel({ model: modelName });
-      // Test if it works with a simple call
+      // Test if it works with a simple API call
+      // This validates the model is available and API key is valid
       const testResult = await model.generateContent("test");
       await testResult.response;
       // If we get here, the model works
@@ -45,12 +90,13 @@ const getModel = async (): Promise<any> => {
       console.log(`✅ Using working model: ${modelName}`);
       return model;
     } catch (err: any) {
-      // Try next model
+      // Model not available or API error - try next model
       continue;
     }
   }
 
   // If all models fail, throw an error
+  // This indicates either API key is invalid or all models are unavailable
   throw new Error(
     "No working Gemini model found. Please check your API key and model availability."
   );
@@ -58,11 +104,25 @@ const getModel = async (): Promise<any> => {
 
 /**
  * Generates a comprehensive summary of educational content using AI
+ * 
+ * Creates a well-structured summary that captures all key concepts and main points
+ * from the provided educational content. The summary is designed to help students
+ * quickly understand the document's main ideas.
+ * 
+ * Summary Characteristics:
+ * - Concise but comprehensive
+ * - Well-structured with clear organization
+ * - Captures all key concepts and main points
+ * - Suitable for quick review and understanding
+ * 
  * @param content - The text content to summarize (should be under 10,000 characters)
  * @returns Promise resolving to the generated summary text
  * @throws {Error} If API key is missing or AI generation fails
  */
 export async function generateSummary(content: string): Promise<string> {
+  // Construct prompt for AI model
+  // The prompt instructs the AI to act as an expert summarizer
+  // and create a comprehensive, well-structured summary
   const prompt = `You are an expert at creating concise, comprehensive summaries of educational content. Create a well-structured summary that captures all key concepts and main points.
 
 Please create a comprehensive summary of the following content:
@@ -70,28 +130,49 @@ Please create a comprehensive summary of the following content:
 ${content}`;
 
   try {
+    // Validate API key is configured
     if (!apiKey) {
       throw new Error("GEMINI_API_KEY is not configured");
     }
+    // Get working AI model (with caching and fallback)
     const model = await getModel();
+    // Generate content using AI model
     const result = await model.generateContent(prompt);
     const response = await result.response;
+    // Extract and return generated text
     return response.text() || "";
   } catch (error: any) {
+    // Log error for debugging
     console.error("Error generating summary:", error);
     console.error("Error details:", error?.message || error);
+    // Re-throw error so caller can handle it
     throw error;
   }
 }
 
 /**
  * Generates detailed study notes from educational content using AI
- * Notes are organized with headings, bullet points, and key concepts
+ * 
+ * Creates well-organized study notes with markdown formatting, including:
+ * - Clear section headings
+ * - Bullet points for key information
+ * - Highlighted key concepts
+ * - Structured organization for easy review
+ * 
+ * Notes Format:
+ * - Uses markdown formatting (headings, lists, emphasis)
+ * - Organized into logical sections
+ * - Suitable for both reading and editing
+ * - Can be exported to various formats
+ * 
  * @param content - The text content to create notes from (should be under 10,000 characters)
  * @returns Promise resolving to markdown-formatted study notes
  * @throws {Error} If API key is missing or AI generation fails
  */
 export async function generateNotes(content: string): Promise<string> {
+  // Construct prompt for AI model
+  // The prompt instructs the AI to create detailed, well-organized study notes
+  // with markdown formatting for structure
   const prompt = `You are an expert at creating detailed study notes. Organize the content into clear sections with headings, bullet points, and key concepts highlighted. Use markdown formatting for structure.
 
 Please create detailed study notes from the following content:
@@ -99,31 +180,64 @@ Please create detailed study notes from the following content:
 ${content}`;
 
   try {
+    // Validate API key is configured
     if (!apiKey) {
       throw new Error("GEMINI_API_KEY is not configured");
     }
+    // Get working AI model (with caching and fallback)
     const model = await getModel();
+    // Generate content using AI model
     const result = await model.generateContent(prompt);
     const response = await result.response;
+    // Extract and return generated text
     return response.text() || "";
   } catch (error: any) {
+    // Log error for debugging
     console.error("Error generating notes:", error);
     console.error("Error details:", error?.message || error);
+    // Re-throw error so caller can handle it
     throw error;
   }
 }
 
 /**
  * Generates flashcards from educational content using AI
+ * 
+ * Creates interactive Q&A flashcards that help students memorize key concepts
+ * through active recall. Each flashcard has a question and answer pair.
+ * 
+ * Flashcard Focus Areas:
+ * - Key concepts, theories, definitions, and principles
+ * - Important facts, formulas, and relationships
+ * - Critical thinking questions about the material
+ * - Academic terminology and technical terms
+ * 
+ * What to Avoid:
+ * - Personal names (unless central to the concept)
+ * - Trivial details like dates without context
+ * - Non-academic information
+ * - Questions that don't test understanding
+ * 
+ * JSON Parsing:
+ * The function includes robust JSON parsing with multiple fallback strategies:
+ * 1. Direct JSON parsing
+ * 2. Handle different response structures (array, object with flashcards/cards property)
+ * 3. Extract JSON from markdown code blocks
+ * 4. Extract JSON array using regex
+ * 5. Return empty array if all parsing fails (graceful degradation)
+ * 
  * @param content - The text content to create flashcards from (should be under 10,000 characters)
  * @param count - Number of flashcards to generate (default: 10)
  * @returns Promise resolving to an array of flashcard objects with question and answer
- * @throws {Error} If API key is missing or AI generation fails (returns empty array on parse errors)
+ * @throws {Error} If API key is missing (returns empty array on parse errors for graceful degradation)
  */
 export async function generateFlashcards(
   content: string,
   count: number = 10
 ): Promise<Array<{ question: string; answer: string }>> {
+  // Construct prompt for AI model
+  // The prompt instructs the AI to create educational flashcards focused on academic content
+  // It specifies the exact format (JSON array) and what to include/avoid
   const prompt = `You are an expert at creating educational flashcards for academic study. Generate exactly ${count} flashcards that focus on:
 - Key concepts, theories, definitions, and principles
 - Important facts, formulas, and relationships
@@ -151,49 +265,58 @@ Please create ${count} academic flashcards from the following content:
 ${content}`;
 
   try {
+    // Validate API key is configured
     if (!apiKey) {
       throw new Error("GEMINI_API_KEY is not configured");
     }
+    // Get working AI model (with caching and fallback)
     const model = await getModel();
+    // Generate content using AI model
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
 
     // Extract JSON from response (might be wrapped in markdown code blocks)
+    // AI models sometimes wrap JSON in markdown code blocks, so we need to clean it
     let jsonText = text.trim();
 
     // Remove markdown code blocks if present
+    // Handles both ```json and ``` code block formats
     jsonText = jsonText.replace(/```json\s*/g, "").replace(/```\s*/g, "");
     jsonText = jsonText.trim();
 
-    // Try to parse the JSON
+    // Try to parse the JSON with multiple fallback strategies
     try {
       const parsed = JSON.parse(jsonText);
-      // Handle different possible structures
+      // Handle different possible response structures
+      // AI might return: array directly, object with flashcards property, or object with cards property
       if (Array.isArray(parsed)) {
-        return parsed.slice(0, count);
+        return parsed.slice(0, count); // Limit to requested count
       } else if (parsed.flashcards && Array.isArray(parsed.flashcards)) {
         return parsed.flashcards.slice(0, count);
       } else if (parsed.cards && Array.isArray(parsed.cards)) {
         return parsed.cards.slice(0, count);
       }
-      return [];
+      return []; // Unknown structure, return empty array
     } catch (parseError) {
       console.error("Error parsing flashcards JSON:", parseError);
-      // Try to extract JSON from text
+      // Fallback: Try to extract JSON array from text using regex
+      // This handles cases where AI returns text with JSON embedded
       const jsonMatch = jsonText.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         try {
           return JSON.parse(jsonMatch[0]).slice(0, count);
         } catch {
-          return [];
+          return []; // Parsing failed, return empty array
         }
       }
-      return [];
+      return []; // No JSON found, return empty array (graceful degradation)
     }
   } catch (error) {
+    // Log error but return empty array instead of throwing
+    // This allows the document upload to succeed even if flashcard generation fails
     console.error("Error generating flashcards:", error);
-    return [];
+    return []; // Graceful degradation - return empty array
   }
 }
 
@@ -299,10 +422,33 @@ ${content}`;
 
 /**
  * Verifies if a user's answer to a flashcard question is correct
- * Uses AI to evaluate semantic similarity and correctness
+ * 
+ * Uses AI to evaluate semantic similarity and correctness of user's answer.
+ * This provides intelligent feedback beyond simple string matching.
+ * 
+ * Evaluation Criteria:
+ * - Semantic similarity: Does the answer convey the same meaning?
+ * - Key concepts: Does the answer demonstrate understanding?
+ * - Completeness: Is the answer sufficiently complete?
+ * - Accuracy: Are there any factual errors?
+ * 
+ * Leniency:
+ * - Different wording that conveys the same meaning
+ * - Minor grammatical differences
+ * - Partial answers that show understanding
+ * 
+ * Strictness:
+ * - Factual errors
+ * - Completely incorrect answers
+ * - Answers that show no understanding
+ * 
+ * Fallback Strategy:
+ * If AI parsing fails, falls back to keyword matching (50% threshold).
+ * This ensures the feature works even if AI response format is unexpected.
+ * 
  * @param question - The flashcard question
  * @param correctAnswer - The correct answer from the flashcard
- * @param userAnswer - The user's input answer
+ * @param userAnswer - The user's input answer to verify
  * @returns Promise resolving to an object with isCorrect boolean and feedback string
  * @throws {Error} If API key is missing or AI generation fails
  */

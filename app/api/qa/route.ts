@@ -6,30 +6,50 @@
  * to generate contextual answers based on the document content.
  * 
  * Flow:
- * 1. Authenticate user
- * 2. Validate document exists and belongs to user
- * 3. Retrieve file from S3 storage
- * 4. Extract text from PDF or DOCX file
- * 5. Truncate text to 10,000 characters (AI token limit)
- * 6. Use AI to generate answer based on document content and question
- * 7. Return answer to user
+ * 1. Apply rate limiting to prevent abuse (20 questions per 15 minutes per user)
+ * 2. Authenticate user and extract userId from JWT token
+ * 3. Validate document ID and question are provided in request body
+ * 4. Verify document exists and belongs to the authenticated user
+ * 5. Retrieve file from S3 storage using the document's S3 key
+ * 6. Extract text from PDF or DOCX file using appropriate library
+ * 7. Validate text extraction was successful
+ * 8. Truncate text to 10,000 characters (to avoid AI token limits)
+ * 9. Use AI to generate answer based on document content and user's question
+ * 10. Return answer along with the original question
  * 
  * Use Cases:
  * - Students asking specific questions about study materials
  * - Clarifying concepts from uploaded documents
  * - Getting explanations for complex topics
+ * - Understanding specific sections of a document
  * 
  * Security:
- * - Rate limiting to prevent abuse
+ * - Rate limiting: 20 questions per 15 minutes per user
  * - User can only ask questions about their own documents
- * - Ownership verification required
+ * - Ownership verification required before processing
+ * - Authentication required for all requests
  * 
  * Performance:
- * - Text extraction happens on-demand (not cached)
- * - Text is truncated to ensure fast AI processing
+ * - Text extraction happens on-demand (not cached) to ensure accuracy
+ * - Text is truncated to 10,000 characters to ensure fast AI processing
+ * - AI processing uses the same model selection and caching as other AI features
+ * 
+ * Error Handling:
+ * - Returns 400 if document ID or question is missing
+ * - Returns 401 if user is not authenticated
+ * - Returns 404 if document not found or doesn't belong to user
+ * - Returns 400 if text extraction fails
+ * - Returns 500 for server errors
+ * 
+ * Response Format:
+ * - answer: AI-generated answer based on document content
+ * - question: Echo of the original question (for frontend display)
  * 
  * @route POST /api/qa
  * @access Protected (requires authentication, own documents only)
+ * @body {string} documentId - ID of the document to ask questions about
+ * @body {string} question - User's question about the document
+ * @returns {object} Answer and original question
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -46,25 +66,29 @@ import { rateLimiters } from "@/lib/rate-limit";
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
-  // Apply rate limiting to prevent abuse
+  // Apply rate limiting to prevent abuse and control costs
   // Limits: 20 questions per 15 minutes per user
+  // This prevents users from overwhelming the system with questions
+  // and helps control AI API costs
   const rateLimitResponse = rateLimiters.qa(request);
   if (rateLimitResponse) {
     return rateLimitResponse;
   }
 
   try {
+    // Establish connection to MongoDB database
     await connectDB();
 
-    // Authenticate user
+    // Authenticate user and get userId from JWT token
     const userId = getUserIdFromRequest(request);
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Extract document ID and question from request body
+    // Extract document ID and question from JSON request body
     const { documentId, question } = await request.json();
 
+    // Validate that both required fields are provided
     if (!documentId || !question) {
       return NextResponse.json(
         { error: "Document ID and question are required" },
@@ -74,6 +98,7 @@ export async function POST(request: NextRequest) {
 
     // Find document and verify ownership
     // Users can only ask questions about their own documents
+    // This prevents unauthorized access to other users' documents
     const document = await Document.findOne({
       _id: documentId,
       userId,
@@ -86,13 +111,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Retrieve file from S3 and extract text
-    // We need the original document text to answer questions
-    // This is done on-demand rather than caching to ensure accuracy
+    // Retrieve file from S3 storage and extract text
+    // We need the original document text to answer questions accurately
+    // This is done on-demand rather than caching to ensure we always use the latest version
+    // Text extraction is necessary because we need the full document content for context
     const fileBuffer = await getFileFromS3(document.s3Key);
     let extractedText = "";
 
     // Extract text based on file type
+    // PDF: Use pdf-parse library to extract text content
+    // DOCX: Use mammoth library to extract raw text (no formatting)
     if (document.fileType === "pdf") {
       const pdfData = await pdfParse(fileBuffer);
       extractedText = pdfData.text;
@@ -101,7 +129,8 @@ export async function POST(request: NextRequest) {
       extractedText = result.value;
     }
 
-    // Validate text extraction was successful
+    // Validate that text extraction was successful
+    // Some files may be corrupted, password-protected, or contain only images
     if (!extractedText || extractedText.trim().length === 0) {
       return NextResponse.json(
         { error: "Could not extract text from document" },
@@ -112,6 +141,7 @@ export async function POST(request: NextRequest) {
     // Truncate text to 10,000 characters for AI processing
     // This ensures consistent processing times and cost control
     // AI models have token limits, and very long documents can exceed these
+    // We take the first 10,000 characters which usually contains the most important content
     const maxLength = 10000;
     const truncatedText =
       extractedText.length > maxLength
@@ -121,16 +151,20 @@ export async function POST(request: NextRequest) {
     // Generate answer using AI
     // The AI model analyzes the document content and question to provide
     // a contextual answer based on the document's information
+    // The answer is generated specifically for this question and document combination
     const answer = await answerQuestion(truncatedText, question);
 
     // Return answer along with the original question
     // This allows the frontend to display the Q&A pair in a conversation format
+    // The question is echoed back so the frontend can maintain conversation history
     return NextResponse.json({
       answer,
       question,
     });
   } catch (error: any) {
+    // Log error for debugging and monitoring
     console.error("Q&A error:", error);
+    // Return generic error message to prevent information leakage
     return NextResponse.json(
       { error: error.message || "Internal server error" },
       { status: 500 }

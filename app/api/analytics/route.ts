@@ -1,3 +1,42 @@
+/**
+ * Learning Analytics API Route
+ * 
+ * This endpoint aggregates and returns comprehensive learning analytics for the authenticated user.
+ * It provides insights into study habits, performance, and progress over time.
+ * 
+ * Analytics Data Provided:
+ * - Study Time: Total minutes studied, broken down by activity type and daily
+ * - Study Streaks: Consecutive days with study sessions
+ * - Quiz Performance: Total attempts, correct answers, accuracy percentage, accuracy by document
+ * - Flashcard Performance: Total reviewed, known cards, mastery percentage
+ * - Reports: Weekly and monthly summaries with aggregated statistics
+ * 
+ * Time Periods:
+ * - week: Last 7 days
+ * - month: Last 30 days
+ * - all: All time data
+ * 
+ * Data Aggregation:
+ * - Uses MongoDB aggregation pipelines for efficient data processing
+ * - Calculates statistics from StudySession, QuizPerformance, and FlashcardPerformance models
+ * - Groups data by document, day, and activity type
+ * - Provides daily breakdowns for chart visualization
+ * 
+ * Performance:
+ * - All queries are optimized with proper indexing
+ * - Aggregation pipelines reduce database load
+ * - Parallel queries where possible
+ * 
+ * Security:
+ * - Requires authentication
+ * - Users can only access their own analytics data
+ * 
+ * @route GET /api/analytics?period=week|month|all
+ * @access Protected (requires authentication)
+ * @query period - Time period for analytics (default: "week")
+ * @returns Comprehensive analytics data including study time, streaks, quiz/flashcard performance, and reports
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import connectDB from "@/lib/db";
@@ -6,53 +45,69 @@ import { StudySession } from "@/models/StudySession";
 import { QuizPerformance } from "@/models/QuizPerformance";
 import { FlashcardPerformance } from "@/models/FlashcardPerformance";
 
-// Force dynamic rendering since we use request.headers
+// Force dynamic rendering since we use request.headers for authentication
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
+    // Establish connection to MongoDB database
     await connectDB();
 
+    // Authenticate user and get userId from JWT token
     const userId = getUserIdFromRequest(request);
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Extract time period from query parameters
+    // period can be: "week" (last 7 days), "month" (last 30 days), or "all" (all time)
+    // Defaults to "week" if not specified
     const { searchParams } = new URL(request.url);
     const period = searchParams.get("period") || "week"; // week, month, all
 
-    // Calculate date range
+    // Calculate date range based on selected period
+    // This determines which data to include in the analytics
     const now = new Date();
     let startDate: Date;
 
     if (period === "week") {
+      // Last 7 days
       startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     } else if (period === "month") {
+      // Last 30 days
       startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     } else {
+      // All time - use epoch start date
       startDate = new Date(0); // All time
     }
 
-    // Get study sessions
+    // Get all study sessions for the user within the date range
+    // Study sessions track time spent on different activities (reading, flashcards, quiz, etc.)
+    // Sorted by start time (newest first) for potential future use
     const studySessions = await StudySession.find({
       userId,
       startTime: { $gte: startDate },
     }).sort({ startTime: -1 });
 
-    // Calculate total study time
+    // Calculate total study time in minutes
+    // Sum all session durations to get total time spent studying
     const totalStudyTime = studySessions.reduce(
       (total, session) => total + (session.duration || 0),
       0
     );
 
-    // Study time by activity type
+    // Calculate study time broken down by activity type
+    // Activity types include: "reading", "flashcards", "quiz", "notes", etc.
+    // This shows how users spend their study time
     const studyTimeByActivity = studySessions.reduce((acc, session) => {
       acc[session.activityType] =
         (acc[session.activityType] || 0) + (session.duration || 0);
       return acc;
     }, {} as Record<string, number>);
 
-    // Study streaks (consecutive days with study sessions)
+    // Calculate study streaks (consecutive days with study sessions)
+    // This is a gamification feature that encourages daily study habits
+    // Streaks are calculated by finding the longest sequence of consecutive days with sessions
     const studyStreak = await calculateStudyStreak(userId);
 
     // Get quiz performances
