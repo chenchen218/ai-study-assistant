@@ -26,6 +26,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if user has a password (not a Google-only account)
+    if (!user.password) {
+      return NextResponse.json(
+        {
+          error:
+            "This account was created with Google. Please use Google login.",
+        },
+        { status: 401 }
+      );
+    }
+
     // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {

@@ -63,7 +63,25 @@ npm install
    - Go to "Database" → "Connect" → "Connect your application"
    - Copy the connection string
 
-### 3. Set Up Email Service (Optional but Recommended)
+### 3. Set Up Google OAuth (Optional - for Google Sign-In)
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select existing one
+3. Enable Google+ API:
+   - Go to "APIs & Services" → "Library"
+   - Search for "Google+ API" and enable it
+4. Create OAuth 2.0 credentials:
+   - Go to "APIs & Services" → "Credentials"
+   - Click "Create Credentials" → "OAuth client ID"
+   - Application type: "Web application"
+   - Authorized JavaScript origins: `http://localhost:3000` (for dev)
+   - Authorized redirect URIs: `http://localhost:3000` (for dev)
+   - Copy the Client ID
+5. Add to `.env.local` (see below)
+
+**Note:** For production, update authorized origins/redirects to your production URL.
+
+### 4. Set Up Email Service (Optional but Recommended)
 
 For email verification, you'll need a Resend account:
 
@@ -74,7 +92,7 @@ For email verification, you'll need a Resend account:
 
 **Note:** Without `RESEND_API_KEY`, email verification is disabled. Users can still register, but verification links will be logged to the console in development.
 
-### 4. Configure Environment Variables
+### 5. Configure Environment Variables
 
 Create a `.env.local` file in the root directory:
 
@@ -122,9 +140,15 @@ RESEND_API_KEY=re_your_resend_api_key_here
 RESEND_FROM_EMAIL=noreply@yourdomain.com
 # Public app URL for verification links (required for email verification)
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Google OAuth (Optional - for Google Sign-In)
+# Get your client ID from: https://console.cloud.google.com/apis/credentials
+# Create OAuth 2.0 Client ID, set authorized JavaScript origins and redirect URIs
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id_here
+GOOGLE_CLIENT_ID=your_google_client_id_here
 ```
 
-### 5. Set Up AWS S3 (For File Uploads)
+### 6. Set Up AWS S3 (For File Uploads)
 
 1. Create an S3 bucket in AWS Console
 2. Create an IAM user with S3 permissions:
@@ -142,7 +166,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
    ```
 3. Generate access keys and add to `.env.local`
 
-### 6. Run the Application
+### 7. Run the Application
 
 ```bash
 npm run dev
@@ -261,22 +285,24 @@ ai-study-assistant/
 
 ### Environment Variables
 
-| Variable                    | Required    | Description                                                       |
-| --------------------------- | ----------- | ----------------------------------------------------------------- |
-| `MONGODB_URI`               | ✅ Yes      | MongoDB connection string                                         |
-| `GEMINI_API_KEY`            | ✅ Yes      | Google Gemini API key for AI features                             |
-| `AWS_ACCESS_KEY_ID`         | ✅ Yes      | AWS access key for S3                                             |
-| `AWS_SECRET_ACCESS_KEY`     | ✅ Yes      | AWS secret key for S3                                             |
-| `AWS_REGION`                | ✅ Yes      | AWS region (e.g., us-east-1)                                      |
-| `AWS_S3_BUCKET_NAME`        | ✅ Yes      | S3 bucket name                                                    |
-| `JWT_SECRET`                | ✅ Yes      | Secret for JWT token signing                                      |
-| `ADMIN_EMAIL`               | ⚠️ Optional | Email address for admin access                                    |
-| `ALLOWED_EMAIL_DOMAINS`     | ⚠️ Optional | Comma-separated allowed email domains                             |
-| `ENABLE_MX_VALIDATION`      | ⚠️ Optional | Enable MX validation (default: true, set "false" to disable)      |
-| `ENABLE_EMAIL_VERIFICATION` | ⚠️ Optional | Enable email verification (default: true, set "false" to disable) |
-| `RESEND_API_KEY`            | ⚠️ Optional | Resend API key for email verification                             |
-| `RESEND_FROM_EMAIL`         | ⚠️ Optional | Sender email for verification emails                              |
-| `NEXT_PUBLIC_APP_URL`       | ⚠️ Optional | Public app URL for verification links                             |
+| Variable                       | Required    | Description                                                       |
+| ------------------------------ | ----------- | ----------------------------------------------------------------- |
+| `MONGODB_URI`                  | ✅ Yes      | MongoDB connection string                                         |
+| `GEMINI_API_KEY`               | ✅ Yes      | Google Gemini API key for AI features                             |
+| `AWS_ACCESS_KEY_ID`            | ✅ Yes      | AWS access key for S3                                             |
+| `AWS_SECRET_ACCESS_KEY`        | ✅ Yes      | AWS secret key for S3                                             |
+| `AWS_REGION`                   | ✅ Yes      | AWS region (e.g., us-east-1)                                      |
+| `AWS_S3_BUCKET_NAME`           | ✅ Yes      | S3 bucket name                                                    |
+| `JWT_SECRET`                   | ✅ Yes      | Secret for JWT token signing                                      |
+| `ADMIN_EMAIL`                  | ⚠️ Optional | Email address for admin access                                    |
+| `ALLOWED_EMAIL_DOMAINS`        | ⚠️ Optional | Comma-separated allowed email domains                             |
+| `ENABLE_MX_VALIDATION`         | ⚠️ Optional | Enable MX validation (default: true, set "false" to disable)      |
+| `ENABLE_EMAIL_VERIFICATION`    | ⚠️ Optional | Enable email verification (default: true, set "false" to disable) |
+| `RESEND_API_KEY`               | ⚠️ Optional | Resend API key for email verification                             |
+| `RESEND_FROM_EMAIL`            | ⚠️ Optional | Sender email for verification emails                              |
+| `NEXT_PUBLIC_APP_URL`          | ⚠️ Optional | Public app URL for verification links                             |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | ⚠️ Optional | Google OAuth client ID for frontend (Google Sign-In)              |
+| `GOOGLE_CLIENT_ID`             | ⚠️ Optional | Google OAuth client ID for backend (token verification)           |
 
 ### MongoDB Collections
 

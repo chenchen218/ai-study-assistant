@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Study Assistant Demo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Merriweather:ital,wght@0,300;0,700;1,300&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <style>
+      /* 1. THE SETUP - Theme_3 Inspiration (Warm/Analog) */
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        background-color: #f3f4f6; /* Outer background */
+        margin: 0;
+        min-height: 100vh;
+        padding: 40px 0;
+        font-family: "DM Sans", sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 40px; /* Space between slides */
+      }
+
+      /* Slide Deck Container - Now just a wrapper for flow */
+      .deck-container {
+        display: flex;
+        flex-direction: column;
+        gap: 40px;
+        align-items: center;
+        width: 100%;
+      }
+
+      /* Individual Slide Styling */
+      .slide-container {
+        align-items: center;
+        background-color: #fdfbf7; /* Warm Paper Background */
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08); /* Soft shadow */
+        display: flex;
+        flex-direction: column;
+        height: 720px;
+        justify-content: center;
+        overflow: hidden;
+        padding: 60px;
+        position: relative; /* Relative for internal absolute elements */
+        width: 1280px;
+        border: 1px solid #e2e8f0;
+        flex-shrink: 0; /* Prevent squishing */
+      }
+
+      /* Background Texture Effect */
+      .slide-container::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+        background-size: 30px 30px;
+        opacity: 0.4;
+        z-index: 0;
+        pointer-events: none;
+      }
+
+      .slide-container > * {
+        position: relative;
+        z-index: 1;
+      }
+
+      /* 2. TYPOGRAPHY */
+
+      /* Headers */
+      .slide-container h1,
+      .slide-container h2,
+      .slide-container h3,
+      .slide-container h4 {
+        color: #2d3748;
+        font-family: "Merriweather", serif;
+        margin: 0;
+      }
+
+      /* Body Text */
+      .slide-container p,
+      .slide-container li,
+      .slide-container .subtitle,
+      .slide-container .chart-summary,
+      .slide-container td,
+      .slide-container th {
+        color: #4a5568;
+        font-family: "DM Sans", sans-serif;
+        line-height: 1.6;
+      }
+
+      /* Font Sizes */
+      .slide-container h1 {
+        font-size: 64px;
+        font-weight: 700;
+        letter-spacing: -1px;
+      }
+
+      .slide-container .slide-title {
+        font-size: 42px;
+        font-weight: 700;
+        margin-bottom: 40px;
+        text-align: left;
+        width: 100%;
+        color: #2d3748;
+        border-bottom: 3px solid #e07a5f; /* Terracotta Accent */
+        padding-bottom: 15px;
+        display: inline-block;
+      }
+
+      .slide-container h3 {
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 15px;
+        color: #2d3748;
+      }
+
+      .slide-container p,
+      .slide-container li {
+        font-size: 20px;
+      }
+
+      .slide-container .subtitle {
+        font-size: 24px;
+        font-weight: 300;
+        font-style: italic;
+        margin-top: 20px;
+        color: #718096;
+      }
+
+      /* 3. LAYOUT UTILITIES */
+
+      .content-area {
+        align-items: center;
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+        justify-content: center;
+        width: 100%;
+      }
+
+      /* Title Slide Layout */
+      .title-layout {
+        text-align: center;
+        padding: 40px;
+        border: 2px solid #2d3748;
+        border-radius: 12px;
+        background-color: #fff;
+      }
+
+      /* Two Column Layout */
+      .two-column {
+        align-items: center;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 60px;
+        width: 100%;
+      }
+
+      .two-column ul {
+        list-style: none;
+        padding: 0;
+      }
+
+      .two-column li {
+        margin-bottom: 20px;
+        padding-left: 30px;
+        position: relative;
+      }
+
+      .two-column li::before {
+        content: "→";
+        color: #e07a5f;
+        position: absolute;
+        left: 0;
+        font-weight: bold;
+      }
+
+      /* Bleed Image Right */
+      .slide-container.bleed-image-layout {
+        align-items: start;
+        display: grid;
+        gap: 50px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        padding: 0;
+      }
+
+      .slide-container.bleed-image-layout > .content-container {
+        padding: 80px 0 80px 80px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        height: 100%;
+      }
+
+      .slide-container.bleed-image-layout > .image-container {
+        height: 100%;
+        overflow: hidden;
+        width: 100%;
+        position: relative;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      }
+
+      .slide-container.bleed-image-layout img.bleed-image-side {
+        position: absolute;
+        top: 0;
+        right: 0;
+        height: 100%;
+        width: 100%;
+        object-fit: cover;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      }
+
+      /* Tiled Text Icons */
+      .tiled-content {
+        align-items: stretch;
+        display: flex;
+        gap: 30px;
+        justify-content: center;
+        width: 100%;
+      }
+
+      .tile {
+        align-items: center;
+        background-color: #fff;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        padding: 30px;
+        text-align: center;
+        transition: transform 0.2s;
+      }
+
+      .tile .icon {
+        color: #81b29a; /* Sage Green */
+        font-size: 48px;
+        margin-bottom: 20px;
+      }
+
+      /* Timeline Layout */
+      .timeline-layout {
+        align-items: center;
+        display: flex;
+        justify-content: space-between;
+        position: relative;
+        width: 100%;
+        margin-top: 40px;
+      }
+
+      .timeline-layout::before {
+        content: "";
+        position: absolute;
+        top: 50px;
+        left: 50px;
+        right: 50px;
+        height: 4px;
+        background-color: #e2e8f0;
+        z-index: 0;
+      }
+
+      .timeline-item {
+        position: relative;
+        text-align: center;
+        width: 22%;
+        z-index: 1;
+      }
+
+      .timeline-icon {
+        width: 100px;
+        height: 100px;
+        background-color: #fff;
+        border: 4px solid #81b29a;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+        font-size: 32px;
+        color: #2d3748;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Tiled Images */
+      .image-tile {
+        flex: 1;
+        text-align: center;
+      }
+
+      .image-tile .image-wrapper {
+        height: 250px;
+        margin-bottom: 20px;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      .image-tile img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      /* Chart Styles */
+      .chart-container {
+        display: flex;
+        flex-direction: column;
+        gap: 25px;
+        width: 80%;
+      }
+
+      .bar {
+        align-items: center;
+        display: flex;
+        gap: 20px;
+      }
+
+      .bar .label {
+        flex: 0 0 150px;
+        text-align: right;
+        font-weight: 700;
+        color: #2d3748;
+      }
+
+      .bar .bar-inner {
+        background-color: #edf2f7;
+        border-radius: 8px;
+        flex-grow: 1;
+        height: 40px;
+        overflow: hidden;
+      }
+
+      .bar .bar-fill {
+        align-items: center;
+        color: white;
+        display: flex;
+        font-size: 16px;
+        font-weight: 700;
+        height: 100%;
+        justify-content: flex-end;
+        padding-right: 15px;
+        background-color: #81b29a; /* Sage Green */
+      }
+
+      /* Rounded Image */
+      .rounded-image-layout .image-wrapper {
+        border-radius: 50%;
+        height: 400px;
+        width: 400px;
+        overflow: hidden;
+        margin: 0 auto;
+        border: 8px solid #fff;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+      }
+
+      .rounded-image-layout .image-wrapper img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      /* Q&A */
+      .qa-layout {
+        text-align: center;
+      }
+      .qa-layout h2 {
+        font-size: 80px;
+        color: #e07a5f;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="deck-container">
+      <!-- Slide 1: Title Slide -->
+      <div class="slide-container" id="slide1">
+        <div class="title-layout">
+          <h1>AI Study Assistant</h1>
+          <p class="subtitle">An intelligent platform for modern learning</p>
+          <div
+            style="
+              margin-top: 40px;
+              display: flex;
+              gap: 20px;
+              justify-content: center;
+              flex-wrap: wrap;
+            "
+          >
+            <span
+              style="
+                background: #e2e8f0;
+                padding: 10px 20px;
+                border-radius: 20px;
+                font-family: 'DM Sans';
+              "
+              >Chenyang Li</span
+            >
+            <span
+              style="
+                background: #e2e8f0;
+                padding: 10px 20px;
+                border-radius: 20px;
+                font-family: 'DM Sans';
+              "
+              >Xueming Tang</span
+            >
+            <span
+              style="
+                background: #e2e8f0;
+                padding: 10px 20px;
+                border-radius: 20px;
+                font-family: 'DM Sans';
+              "
+              >Qinyuan Shen</span
+            >
+            <span
+              style="
+                background: #e2e8f0;
+                padding: 10px 20px;
+                border-radius: 20px;
+                font-family: 'DM Sans';
+              "
+              >NianChao Wang</span
+            >
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 2: Introduction (Concept) -->
+      <div class="slide-container bleed-image-layout" id="slide2">
+        <div class="content-container">
+          <h2 class="slide-title">The Problem: <br />Information Overload</h2>
+          <div class="content-area" style="align-items: start">
+            <p>
+              Students today are drowning in PDFs, lecture notes, and textbooks.
+              Creating study materials manually is time-consuming and
+              inefficient.
+            </p>
+            <p style="margin-top: 20px">
+              <strong>Our Solution:</strong> An AI-powered study buddy that
+              instantly transforms raw documents into interactive learning
+              tools.
+            </p>
+            <ul style="margin-top: 20px; list-style: none; padding: 0">
+              <li style="margin-bottom: 10px">
+                <i
+                  class="fa-solid fa-check"
+                  style="color: #81b29a; margin-right: 10px"
+                ></i>
+                Instant Summaries
+              </li>
+              <li style="margin-bottom: 10px">
+                <i
+                  class="fa-solid fa-check"
+                  style="color: #81b29a; margin-right: 10px"
+                ></i>
+                Auto-generated Flashcards
+              </li>
+              <li>
+                <i
+                  class="fa-solid fa-check"
+                  style="color: #81b29a; margin-right: 10px"
+                ></i>
+                Smart Quizzes
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div
+          class="image-container"
+          style="
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          "
+        >
+          <img
+            class="bleed-image-side"
+            src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&h=720&fit=crop&q=80"
+            alt="Minimalist illustration of a student using a laptop"
+            style="opacity: 0.9"
+            onerror="this.style.display='none'; this.parentElement.innerHTML='<i class=\'fa-solid fa-laptop\' style=\'font-size:120px;color:white;opacity:0.8\'></i>'"
+          />
+        </div>
+      </div>
+
+      <!-- Slide 3: Tech Stack -->
+      <div class="slide-container" id="slide3">
+        <h2 class="slide-title">Full Tech Stack & Architecture</h2>
+        <div class="content-area">
+          <div class="tiled-content">
+            <div class="tile">
+              <div class="icon"><i class="fa-brands fa-react"></i></div>
+              <h3>Frontend</h3>
+              <p style="font-size: 16px">
+                Next.js 14 App Router<br />React 18 & Context API<br />Tailwind
+                CSS (Theme)<br />Framer Motion (Animations)<br />React Hook Form
+                (Validation)
+              </p>
+            </div>
+            <div class="tile">
+              <div class="icon"><i class="fa-brands fa-node"></i></div>
+              <h3>Backend</h3>
+              <p style="font-size: 16px">
+                Next.js API Routes (Serverless)<br />MongoDB & Mongoose
+                Models<br />JWT (HttpOnly Cookies)<br />Zod (Schema
+                Validation)<br />AWS SDK
+              </p>
+            </div>
+            <div class="tile">
+              <div class="icon"><i class="fa-solid fa-brain"></i></div>
+              <h3>AI & Data</h3>
+              <p style="font-size: 16px">
+                Google Gemini 2.5 Flash<br />LangChain Concepts<br />PDF-Parse /
+                Mammoth<br />Pinecone (Vector - Potential)<br />S3 (Document
+                Storage)
+              </p>
+            </div>
+            <div class="tile">
+              <div class="icon"><i class="fa-solid fa-server"></i></div>
+              <h3>DevOps</h3>
+              <p style="font-size: 16px">
+                Vercel (CI/CD Deployment)<br />GitHub Actions<br />AWS SES
+                (Email Service)<br />MongoDB Atlas<br />CloudWatch (Monitoring)
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 4: Role 1 - Auth & User Lead -->
+      <div class="slide-container" id="slide4">
+        <h2 class="slide-title">User & Authentication Lead</h2>
+        <div class="content-area">
+          <div class="two-column">
+            <div>
+              <h3>Core Ownership & APIs</h3>
+              <ul style="font-size: 18px">
+                <li>
+                  <strong>Ownership:</strong> Registration, Login/Logout, JWT
+                  signing/verification, RBAC (User/Admin).
+                </li>
+                <li>
+                  <strong>API Endpoints:</strong> <br /><code
+                    style="
+                      background: #edf2f7;
+                      padding: 2px 6px;
+                      border-radius: 4px;
+                      font-size: 0.9em;
+                    "
+                    >POST /api/auth/(register|login)</code
+                  >
+                  <br /><code
+                    style="
+                      background: #edf2f7;
+                      padding: 2px 6px;
+                      border-radius: 4px;
+                      font-size: 0.9em;
+                    "
+                    >GET /api/auth/me</code
+                  >
+                </li>
+                <li>
+                  <strong>Security:</strong> Token rotation, HttpOnly cookies,
+                  CSRF posture, Brute-force rate limiting.
+                </li>
+              </ul>
+              <h3 style="margin-top: 20px">Frontend & Quality</h3>
+              <ul style="font-size: 18px">
+                <li>
+                  <strong>UX:</strong> Form validation, error/loading states,
+                  redirects on auth change.
+                </li>
+                <li>
+                  <strong>QA:</strong> Unit tests, "Happy/Sad path" E2E,
+                  Security headers.
+                </li>
+              </ul>
+            </div>
+            <div
+              class="image-wrapper"
+              style="
+                border-radius: 12px;
+                overflow: hidden;
+                height: 100%;
+                min-height: 400px;
+                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              "
+            >
+              <img
+                src="https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=600&h=400&fit=crop&q=80"
+                alt="Cybersecurity authentication concept"
+                style="
+                  width: 100%;
+                  height: 100%;
+                  object-fit: cover;
+                  opacity: 0.9;
+                "
+                onerror="this.style.display='none'; this.parentElement.innerHTML='<i class=\'fa-solid fa-shield-halved\' style=\'font-size:80px;color:white;opacity:0.8\'></i>'"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 5: Role 2 - Frontend & UI Lead -->
+      <div class="slide-container bleed-image-layout" id="slide5">
+        <div class="content-container">
+          <h2 class="slide-title" style="margin-left: -5px">
+            Frontend/UI Lead
+          </h2>
+          <div class="content-area" style="align-items: start">
+            <ul style="list-style: none; padding: 0">
+              <li style="margin-bottom: 20px">
+                <strong style="color: #2d3748; display: block; font-size: 22px"
+                  >Design System</strong
+                >
+                <span style="font-size: 18px"
+                  >Unified tokens (globals.css). Shared components:
+                  <em>Button, Input, Card, Tabs, Toast</em>. Accessibility
+                  (a11y) & responsive mobile layout.</span
+                >
+              </li>
+              <li style="margin-bottom: 20px">
+                <strong style="color: #2d3748; display: block; font-size: 22px"
+                  >Page Architecture</strong
+                >
+                <span style="font-size: 18px">
+                  <strong>Dashboard:</strong> Drag-and-drop upload, polling
+                  progress, delete flow.<br />
+                  <strong>Document Detail:</strong> Interactive tabs
+                  (Summary/Flashcards/Quiz/Q&A).<br />
+                  <strong>Analytics:</strong> Data visualization cards &
+                  filters.
+                </span>
+              </li>
+              <li>
+                <strong style="color: #2d3748; display: block; font-size: 22px"
+                  >UX & Quality</strong
+                >
+                <span style="font-size: 18px"
+                  >Optimistic updates, Skeletons, Global Toasts. Lighthouse
+                  scores & E2E smoke tests.</span
+                >
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div
+          class="image-container"
+          style="
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          "
+        >
+          <img
+            class="bleed-image-side"
+            src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=720&fit=crop&q=80"
+            alt="Modern dashboard UI design"
+            style="opacity: 0.9"
+            onerror="this.style.display='none'; this.parentElement.innerHTML='<i class=\'fa-solid fa-chart-line\' style=\'font-size:120px;color:white;opacity:0.8\'></i>'"
+          />
+        </div>
+      </div>
+
+      <!-- Slide 6: Role 3 - AI Lead (Pipeline) -->
+      <div class="slide-container" id="slide6">
+        <h2 class="slide-title">Documents & AI Lead</h2>
+        <div class="content-area">
+          <div style="width: 100%; margin-bottom: 30px">
+            <div
+              style="
+                background: #fff;
+                padding: 20px;
+                border-radius: 12px;
+                border: 1px solid #e2e8f0;
+                display: inline-block;
+                margin-right: 20px;
+              "
+            >
+              <strong>APIs:</strong>
+              <code
+                style="
+                  background: #edf2f7;
+                  padding: 2px 6px;
+                  border-radius: 4px;
+                  color: #d53f8c;
+                "
+                >POST /api/documents</code
+              >
+              <code
+                style="
+                  background: #edf2f7;
+                  padding: 2px 6px;
+                  border-radius: 4px;
+                  color: #3182ce;
+                "
+                >GET /api/documents/[id]</code
+              >
+            </div>
+            <div
+              style="
+                background: #fff;
+                padding: 20px;
+                border-radius: 12px;
+                border: 1px solid #e2e8f0;
+                display: inline-block;
+              "
+            >
+              <strong>State Machine:</strong> Processing &rarr; Completed |
+              Failed
+            </div>
+          </div>
+
+          <div class="timeline-layout">
+            <div class="timeline-item">
+              <div class="timeline-icon">
+                <i class="fa-solid fa-cloud-arrow-up"></i>
+              </div>
+              <h3>Ingest</h3>
+              <p style="font-size: 15px">S3 Upload & validation</p>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-icon">
+                <i class="fa-solid fa-file-code"></i>
+              </div>
+              <h3>Parse</h3>
+              <p style="font-size: 15px">
+                <code>pdf-parse</code> / <code>mammoth</code><br />Cleanup &
+                Truncation
+              </p>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-icon">
+                <i class="fa-solid fa-microchip"></i>
+              </div>
+              <h3>Generate</h3>
+              <p style="font-size: 15px">
+                AI Pipeline (Summary, Notes, Quiz)<br />Stable JSON Output
+              </p>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-icon">
+                <i class="fa-solid fa-database"></i>
+              </div>
+              <h3>Data</h3>
+              <p style="font-size: 15px">
+                Schemas for Flashcards/Quiz<br />Result Logging
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 7: Role 3 - AI Features -->
+      <div class="slide-container" id="slide7">
+        <h2 class="slide-title">Core AI Features</h2>
+        <div class="content-area">
+          <!-- Grid layout for 5 items: 3 top, 2 bottom centered -->
+          <div
+            style="
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 20px;
+              width: 100%;
+              margin-bottom: 20px;
+            "
+          >
+            <div class="tile" style="padding: 20px">
+              <div class="icon" style="font-size: 32px; margin-bottom: 10px">
+                <i class="fa-solid fa-align-left"></i>
+              </div>
+              <h3 style="font-size: 20px">AI Summaries</h3>
+              <p style="font-size: 16px">Instant concise document overviews.</p>
+            </div>
+            <div class="tile" style="padding: 20px">
+              <div class="icon" style="font-size: 32px; margin-bottom: 10px">
+                <i class="fa-solid fa-list-check"></i>
+              </div>
+              <h3 style="font-size: 20px">Structured Notes</h3>
+              <p style="font-size: 16px">
+                Organized bullet points & key concepts.
+              </p>
+            </div>
+            <div class="tile" style="padding: 20px">
+              <div class="icon" style="font-size: 32px; margin-bottom: 10px">
+                <i class="fa-solid fa-layer-group"></i>
+              </div>
+              <h3 style="font-size: 20px">Flashcards</h3>
+              <p style="font-size: 16px">
+                Active recall decks generated automatically.
+              </p>
+            </div>
+          </div>
+          <div
+            style="
+              display: flex;
+              gap: 20px;
+              justify-content: center;
+              width: 100%;
+            "
+          >
+            <div class="tile" style="padding: 20px; max-width: 300px">
+              <div class="icon" style="font-size: 32px; margin-bottom: 10px">
+                <i class="fa-solid fa-circle-question"></i>
+              </div>
+              <h3 style="font-size: 20px">Smart Quiz</h3>
+              <p style="font-size: 16px">
+                Multiple choice assessment generation.
+              </p>
+            </div>
+            <div class="tile" style="padding: 20px; max-width: 300px">
+              <div class="icon" style="font-size: 32px; margin-bottom: 10px">
+                <i class="fa-solid fa-robot"></i>
+              </div>
+              <h3 style="font-size: 20px">Interactive Q&A</h3>
+              <p style="font-size: 16px">Chat with your documents.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- NEW Slide 8: Delightful Features -->
+      <div class="slide-container" id="slide8">
+        <h2 class="slide-title">Gemini-Powered Magic ✨</h2>
+        <div class="content-area">
+          <div class="tiled-content" style="gap: 25px">
+            <div
+              class="tile"
+              style="border: 2px solid #e07a5f; background: #fff5f2"
+            >
+              <div class="icon" style="color: #e07a5f">
+                <i class="fa-solid fa-user-graduate"></i>
+              </div>
+              <h3>✨ Socratic Tutor</h3>
+              <p style="font-size: 16px">
+                Don't just get answers. Gemini adopts a persona (e.g., "Strict
+                Professor") and <strong>quizzes you</strong> to test deep
+                understanding.
+              </p>
+            </div>
+            <div
+              class="tile"
+              style="border: 2px solid #81b29a; background: #f0fff4"
+            >
+              <div class="icon" style="color: #81b29a">
+                <i class="fa-solid fa-microphone-lines"></i>
+              </div>
+              <h3>✨ Podcast Scripter</h3>
+              <p style="font-size: 16px">
+                Converts dry lecture notes into an engaging
+                <strong>2-person dialogue script</strong>, making study material
+                conversational.
+              </p>
+            </div>
+            <div
+              class="tile"
+              style="border: 2px solid #f2cc8f; background: #fffdf5"
+            >
+              <div class="icon" style="color: #f2cc8f">
+                <i class="fa-solid fa-lightbulb"></i>
+              </div>
+              <h3>✨ Visual Mnemonics</h3>
+              <p style="font-size: 16px">
+                Generates vivid, creative
+                <strong>image descriptions</strong> (e.g., "A cell wall made of
+                LEGOs") to help memorize abstract terms.
+              </p>
+            </div>
+            <div
+              class="tile"
+              style="border: 2px solid #3d405b; background: #f4f4f6"
+            >
+              <div class="icon" style="color: #3d405b">
+                <i class="fa-solid fa-baby"></i>
+              </div>
+              <h3>✨ ELI5 Rewriter</h3>
+              <p style="font-size: 16px">
+                "Explain Like I'm 5": Instantly rewrites complex academic jargon
+                into simple, everyday <strong>analogies</strong>.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 9: Role 4 - DevOps & Quality -->
+      <div class="slide-container" id="slide9">
+        <h2 class="slide-title">Platform/DevOps & Quality</h2>
+        <div class="content-area">
+          <div class="two-column rounded-image-layout">
+            <div>
+              <h3>Infrastructure & Operations</h3>
+              <ul style="font-size: 19px">
+                <li>
+                  <strong>Env & Secrets:</strong> Isolated Local/Stage/Prod.
+                  Strict .env conventions (Mongo, S3, Gemini).
+                </li>
+                <li>
+                  <strong>CI/CD:</strong> Lint/Test/Build pipelines. Preview
+                  deploys & protected main branch.
+                </li>
+                <li>
+                  <strong>Observability:</strong> Sentry for error tracking.
+                  Performance metrics & alerts.
+                </li>
+                <li>
+                  <strong>Security:</strong> Least-privilege IAM, CORS,
+                  Dependency Scanning.
+                </li>
+                <li>
+                  <strong>Release:</strong> Deployment playbook, Rollback plan,
+                  SLA targets (p95 latency).
+                </li>
+              </ul>
+            </div>
+            <div
+              class="image-wrapper"
+              style="
+                background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              "
+            >
+              <img
+                src="https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&h=400&fit=crop&q=80"
+                alt="Server infrastructure abstract"
+                style="opacity: 0.9"
+                onerror="this.style.display='none'; this.parentElement.innerHTML='<i class=\'fa-solid fa-server\' style=\'font-size:100px;color:white;opacity:0.8\'></i>'"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 10: Team Contracts -->
+      <div class="slide-container" id="slide10">
+        <h2 class="slide-title">Team Contracts & Coordination</h2>
+        <div class="content-area">
+          <div class="tiled-content">
+            <div
+              class="tile"
+              style="background: #fdfbf7; border: 2px dashed #cbd5e0"
+            >
+              <div class="icon"><i class="fa-solid fa-handshake"></i></div>
+              <h3>API Contracts</h3>
+              <p>
+                Shared TypeScript types as Single Source of Truth.<br />Standardized
+                Request/Response shapes.
+              </p>
+            </div>
+            <div
+              class="tile"
+              style="background: #fdfbf7; border: 2px dashed #cbd5e0"
+            >
+              <div class="icon">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+              </div>
+              <h3>Error Handling</h3>
+              <p>
+                Unified Error Code Enum & Message guidelines.<br />Consistent UX
+                for failures.
+              </p>
+            </div>
+            <div
+              class="tile"
+              style="background: #fdfbf7; border: 2px dashed #cbd5e0"
+            >
+              <div class="icon"><i class="fa-solid fa-rotate"></i></div>
+              <h3>Async Pattern</h3>
+              <p>
+                Upload returns
+                <code>document.id</code> immediatey.<br />Frontend polls
+                <code>GET /api/documents/[id]</code>.
+              </p>
+            </div>
+          </div>
+          <p
+            style="
+              text-align: center;
+              margin-top: 40px;
+              font-style: italic;
+              color: #718096;
+            "
+          >
+            "Seamless integration through strict contracts."
+          </p>
+        </div>
+      </div>
+
+      <!-- Slide 11: Impact Analytics -->
+      <div class="slide-container" id="slide11">
+        <h2 class="slide-title">Study Efficiency Gains</h2>
+        <div class="content-area">
+          <div class="chart-container">
+            <div class="bar">
+              <div class="label">Manual Note Taking</div>
+              <div class="bar-inner">
+                <div
+                  class="bar-fill"
+                  style="width: 100%; background-color: #cbd5e0; color: #4a5568"
+                >
+                  60 Minutes
+                </div>
+              </div>
+            </div>
+            <div class="bar">
+              <div class="label">AI Processing</div>
+              <div class="bar-inner">
+                <div
+                  class="bar-fill"
+                  style="width: 5%; background-color: #e07a5f"
+                >
+                  3 Min
+                </div>
+              </div>
+            </div>
+            <div class="bar">
+              <div class="label">Review Time</div>
+              <div class="bar-inner">
+                <div
+                  class="bar-fill"
+                  style="width: 40%; background-color: #81b29a"
+                >
+                  25 Minutes
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="chart-summary">
+            By automating the creation of study materials, we reduce prep time
+            by over 90%, allowing students to focus purely on active recall and
+            learning.
+          </p>
+        </div>
+      </div>
+
+      <!-- Slide 12: Demo -->
+      <div class="slide-container" id="slide12">
+        <div class="qa-layout">
+          <h2>Live Demo</h2>
+          <p style="font-size: 24px; margin-top: 20px">
+            Let's see the Assistant in action.
+          </p>
+          <div style="margin-top: 60px">
+            <i
+              class="fa-solid fa-laptop-code"
+              style="font-size: 60px; color: #2d3748"
+            ></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
