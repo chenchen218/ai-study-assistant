@@ -104,11 +104,25 @@ const getModel = async (): Promise<any> => {
 
 /**
  * Generates a comprehensive summary of educational content using AI
+ * 
+ * Creates a well-structured summary that captures all key concepts and main points
+ * from the provided educational content. The summary is designed to help students
+ * quickly understand the document's main ideas.
+ * 
+ * Summary Characteristics:
+ * - Concise but comprehensive
+ * - Well-structured with clear organization
+ * - Captures all key concepts and main points
+ * - Suitable for quick review and understanding
+ * 
  * @param content - The text content to summarize (should be under 10,000 characters)
  * @returns Promise resolving to the generated summary text
  * @throws {Error} If API key is missing or AI generation fails
  */
 export async function generateSummary(content: string): Promise<string> {
+  // Construct prompt for AI model
+  // The prompt instructs the AI to act as an expert summarizer
+  // and create a comprehensive, well-structured summary
   const prompt = `You are an expert at creating concise, comprehensive summaries of educational content. Create a well-structured summary that captures all key concepts and main points.
 
 Please create a comprehensive summary of the following content:
@@ -116,28 +130,49 @@ Please create a comprehensive summary of the following content:
 ${content}`;
 
   try {
+    // Validate API key is configured
     if (!apiKey) {
       throw new Error("GEMINI_API_KEY is not configured");
     }
+    // Get working AI model (with caching and fallback)
     const model = await getModel();
+    // Generate content using AI model
     const result = await model.generateContent(prompt);
     const response = await result.response;
+    // Extract and return generated text
     return response.text() || "";
   } catch (error: any) {
+    // Log error for debugging
     console.error("Error generating summary:", error);
     console.error("Error details:", error?.message || error);
+    // Re-throw error so caller can handle it
     throw error;
   }
 }
 
 /**
  * Generates detailed study notes from educational content using AI
- * Notes are organized with headings, bullet points, and key concepts
+ * 
+ * Creates well-organized study notes with markdown formatting, including:
+ * - Clear section headings
+ * - Bullet points for key information
+ * - Highlighted key concepts
+ * - Structured organization for easy review
+ * 
+ * Notes Format:
+ * - Uses markdown formatting (headings, lists, emphasis)
+ * - Organized into logical sections
+ * - Suitable for both reading and editing
+ * - Can be exported to various formats
+ * 
  * @param content - The text content to create notes from (should be under 10,000 characters)
  * @returns Promise resolving to markdown-formatted study notes
  * @throws {Error} If API key is missing or AI generation fails
  */
 export async function generateNotes(content: string): Promise<string> {
+  // Construct prompt for AI model
+  // The prompt instructs the AI to create detailed, well-organized study notes
+  // with markdown formatting for structure
   const prompt = `You are an expert at creating detailed study notes. Organize the content into clear sections with headings, bullet points, and key concepts highlighted. Use markdown formatting for structure.
 
 Please create detailed study notes from the following content:
@@ -145,31 +180,64 @@ Please create detailed study notes from the following content:
 ${content}`;
 
   try {
+    // Validate API key is configured
     if (!apiKey) {
       throw new Error("GEMINI_API_KEY is not configured");
     }
+    // Get working AI model (with caching and fallback)
     const model = await getModel();
+    // Generate content using AI model
     const result = await model.generateContent(prompt);
     const response = await result.response;
+    // Extract and return generated text
     return response.text() || "";
   } catch (error: any) {
+    // Log error for debugging
     console.error("Error generating notes:", error);
     console.error("Error details:", error?.message || error);
+    // Re-throw error so caller can handle it
     throw error;
   }
 }
 
 /**
  * Generates flashcards from educational content using AI
+ * 
+ * Creates interactive Q&A flashcards that help students memorize key concepts
+ * through active recall. Each flashcard has a question and answer pair.
+ * 
+ * Flashcard Focus Areas:
+ * - Key concepts, theories, definitions, and principles
+ * - Important facts, formulas, and relationships
+ * - Critical thinking questions about the material
+ * - Academic terminology and technical terms
+ * 
+ * What to Avoid:
+ * - Personal names (unless central to the concept)
+ * - Trivial details like dates without context
+ * - Non-academic information
+ * - Questions that don't test understanding
+ * 
+ * JSON Parsing:
+ * The function includes robust JSON parsing with multiple fallback strategies:
+ * 1. Direct JSON parsing
+ * 2. Handle different response structures (array, object with flashcards/cards property)
+ * 3. Extract JSON from markdown code blocks
+ * 4. Extract JSON array using regex
+ * 5. Return empty array if all parsing fails (graceful degradation)
+ * 
  * @param content - The text content to create flashcards from (should be under 10,000 characters)
  * @param count - Number of flashcards to generate (default: 10)
  * @returns Promise resolving to an array of flashcard objects with question and answer
- * @throws {Error} If API key is missing or AI generation fails (returns empty array on parse errors)
+ * @throws {Error} If API key is missing (returns empty array on parse errors for graceful degradation)
  */
 export async function generateFlashcards(
   content: string,
   count: number = 10
 ): Promise<Array<{ question: string; answer: string }>> {
+  // Construct prompt for AI model
+  // The prompt instructs the AI to create educational flashcards focused on academic content
+  // It specifies the exact format (JSON array) and what to include/avoid
   const prompt = `You are an expert at creating educational flashcards for academic study. Generate exactly ${count} flashcards that focus on:
 - Key concepts, theories, definitions, and principles
 - Important facts, formulas, and relationships
@@ -197,49 +265,58 @@ Please create ${count} academic flashcards from the following content:
 ${content}`;
 
   try {
+    // Validate API key is configured
     if (!apiKey) {
       throw new Error("GEMINI_API_KEY is not configured");
     }
+    // Get working AI model (with caching and fallback)
     const model = await getModel();
+    // Generate content using AI model
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
 
     // Extract JSON from response (might be wrapped in markdown code blocks)
+    // AI models sometimes wrap JSON in markdown code blocks, so we need to clean it
     let jsonText = text.trim();
 
     // Remove markdown code blocks if present
+    // Handles both ```json and ``` code block formats
     jsonText = jsonText.replace(/```json\s*/g, "").replace(/```\s*/g, "");
     jsonText = jsonText.trim();
 
-    // Try to parse the JSON
+    // Try to parse the JSON with multiple fallback strategies
     try {
       const parsed = JSON.parse(jsonText);
-      // Handle different possible structures
+      // Handle different possible response structures
+      // AI might return: array directly, object with flashcards property, or object with cards property
       if (Array.isArray(parsed)) {
-        return parsed.slice(0, count);
+        return parsed.slice(0, count); // Limit to requested count
       } else if (parsed.flashcards && Array.isArray(parsed.flashcards)) {
         return parsed.flashcards.slice(0, count);
       } else if (parsed.cards && Array.isArray(parsed.cards)) {
         return parsed.cards.slice(0, count);
       }
-      return [];
+      return []; // Unknown structure, return empty array
     } catch (parseError) {
       console.error("Error parsing flashcards JSON:", parseError);
-      // Try to extract JSON from text
+      // Fallback: Try to extract JSON array from text using regex
+      // This handles cases where AI returns text with JSON embedded
       const jsonMatch = jsonText.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         try {
           return JSON.parse(jsonMatch[0]).slice(0, count);
         } catch {
-          return [];
+          return []; // Parsing failed, return empty array
         }
       }
-      return [];
+      return []; // No JSON found, return empty array (graceful degradation)
     }
   } catch (error) {
+    // Log error but return empty array instead of throwing
+    // This allows the document upload to succeed even if flashcard generation fails
     console.error("Error generating flashcards:", error);
-    return [];
+    return []; // Graceful degradation - return empty array
   }
 }
 
@@ -345,10 +422,33 @@ ${content}`;
 
 /**
  * Verifies if a user's answer to a flashcard question is correct
- * Uses AI to evaluate semantic similarity and correctness
+ * 
+ * Uses AI to evaluate semantic similarity and correctness of user's answer.
+ * This provides intelligent feedback beyond simple string matching.
+ * 
+ * Evaluation Criteria:
+ * - Semantic similarity: Does the answer convey the same meaning?
+ * - Key concepts: Does the answer demonstrate understanding?
+ * - Completeness: Is the answer sufficiently complete?
+ * - Accuracy: Are there any factual errors?
+ * 
+ * Leniency:
+ * - Different wording that conveys the same meaning
+ * - Minor grammatical differences
+ * - Partial answers that show understanding
+ * 
+ * Strictness:
+ * - Factual errors
+ * - Completely incorrect answers
+ * - Answers that show no understanding
+ * 
+ * Fallback Strategy:
+ * If AI parsing fails, falls back to keyword matching (50% threshold).
+ * This ensures the feature works even if AI response format is unexpected.
+ * 
  * @param question - The flashcard question
  * @param correctAnswer - The correct answer from the flashcard
- * @param userAnswer - The user's input answer
+ * @param userAnswer - The user's input answer to verify
  * @returns Promise resolving to an object with isCorrect boolean and feedback string
  * @throws {Error} If API key is missing or AI generation fails
  */
