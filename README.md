@@ -238,6 +238,9 @@ ai-study-assistant/
 - Enable HTTPS
 - Monitor API rate limits
 
+## 🎨 Frontend Guide
+- See `docs/frontend.md` for UI structure, data-fetching patterns, and error-handling standards.
+
 ## 📝 Development
 ```bash
 npm run dev    # Development server

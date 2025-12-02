@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
@@ -31,6 +31,7 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ScrollArea } from "../../components/ui/scroll-area";
 import { Textarea } from "../../components/ui/textarea";
+import { useToast } from "../../components/ui/use-toast";
 
 interface DocumentData {
   document: {
@@ -127,9 +128,11 @@ export default function DocumentPage() {
   const router = useRouter();
   const params = useParams();
   const documentId = (params?.id as string) || "";
+  const { toast } = useToast();
 
   const [data, setData] = useState<DocumentData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>("summary");
   const [currentFlashcard, setCurrentFlashcard] = useState(0);
   const [isFlashcardFlipped, setIsFlashcardFlipped] = useState(false);
@@ -172,6 +175,59 @@ export default function DocumentPage() {
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [isExportingFlashcards, setIsExportingFlashcards] = useState(false);
 
+  const fetchDoc = useCallback(async () => {
+    if (!documentId) {
+      setLoadError("Missing document id.");
+      setLoading(false);
+      return;
+    }
+
+    setLoadError(null);
+    setLoading(true);
+
+    try {
+      const response = await fetch(`/api/documents/${documentId}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        const message =
+          errorData?.error ||
+          (response.status === 404
+            ? "Document not found or has been removed."
+            : `Failed to load document (${response.status}).`);
+        setLoadError(message);
+        if (response.status === 404) {
+          router.push("/dashboard");
+        }
+        throw new Error(message);
+      }
+      const documentData = (await response.json()) as DocumentData;
+      setData(documentData);
+      setActiveTab("summary");
+      setCurrentFlashcard(0);
+      setIsFlashcardFlipped(false);
+      setCurrentQuestionIndex(0);
+      setQuizSelectedAnswer(null);
+      setQuizShowResult(false);
+      setQuizCompleted(false);
+      setQuizScore(0);
+      setQuestionStartTime(Date.now());
+    } catch (error) {
+      console.error("Error fetching document:", error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to load document. Please try again.";
+      setLoadError(message);
+      toast({
+        title: "Unable to load document",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [documentId, router, toast]);
+
   useEffect(() => {
     if (authLoading) {
       return; // Still checking auth, don't do anything yet
@@ -181,6 +237,7 @@ export default function DocumentPage() {
       return;
     }
     if (!documentId) {
+      setLoadError("Missing document id.");
       setLoading(false);
       return;
     }
@@ -232,39 +289,13 @@ export default function DocumentPage() {
       }
     };
 
-    const fetchDoc = async () => {
-      try {
-        const response = await fetch(`/api/documents/${documentId}`);
-        if (response.ok) {
-          const documentData = (await response.json()) as DocumentData;
-          setData(documentData);
-          setActiveTab("summary");
-          setCurrentFlashcard(0);
-          setIsFlashcardFlipped(false);
-          setCurrentQuestionIndex(0);
-          setQuizSelectedAnswer(null);
-          setQuizShowResult(false);
-          setQuizCompleted(false);
-          setQuizScore(0);
-          setQuestionStartTime(Date.now());
-        } else {
-          alert("Document not found");
-          router.push("/dashboard");
-        }
-      } catch (error) {
-        console.error("Error fetching document:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDoc();
-    startSession();
+    void fetchDoc();
+    void startSession();
 
     return () => {
       void endSession();
     };
-  }, [user, documentId, router]);
+  }, [authLoading, user, documentId, router, fetchDoc]);
 
   useEffect(() => {
     if (qaScrollRef.current) {
@@ -470,14 +501,27 @@ export default function DocumentPage() {
         setQuizCompleted(false);
         setQuizScore(0);
         setQuestionStartTime(Date.now());
-        alert("Quiz regenerated successfully!");
+        toast({
+          title: "Quiz regenerated",
+          description: "Fresh quiz questions are ready.",
+          variant: "success",
+        });
       } else {
         const errorData = await response.json();
-        alert(errorData.error || "Failed to regenerate quiz. Please try again.");
+        toast({
+          title: "Could not regenerate quiz",
+          description:
+            errorData.error || "Failed to regenerate quiz. Please try again.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error("Error regenerating quiz:", error);
-      alert("Failed to regenerate quiz. Please try again.");
+      toast({
+        title: "Could not regenerate quiz",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsRegeneratingQuiz(false);
     }
@@ -515,10 +559,18 @@ export default function DocumentPage() {
         setQaMessages((prev) => [...prev, aiMessage]);
       } else {
         const error = await response.json();
-        alert(error.error || "Failed to get answer");
+        toast({
+          title: "Unable to get an answer",
+          description: error.error || "Please try again in a moment.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
-      alert("Failed to get answer. Please try again.");
+      toast({
+        title: "Unable to get an answer",
+        description: "Network issue. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setQaLoading(false);
     }
@@ -570,14 +622,26 @@ export default function DocumentPage() {
           };
         });
         setIsEditingNotes(false);
-        alert("Notes saved successfully!");
+        toast({
+          title: "Notes saved",
+          description: "Your edits are up to date.",
+          variant: "success",
+        });
       } else {
         const errorData = await response.json();
-        alert(errorData.error || "Failed to save notes");
+        toast({
+          title: "Could not save notes",
+          description: errorData.error || "Please try again.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error("Error saving notes:", error);
-      alert("Failed to save notes. Please try again.");
+      toast({
+        title: "Could not save notes",
+        description: "Network error. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsSavingNotes(false);
     }
@@ -632,7 +696,11 @@ export default function DocumentPage() {
       pdf.save(fileName);
     } catch (error) {
       console.error("Error exporting notes:", error);
-      alert("Failed to export notes. Please try again.");
+      toast({
+        title: "Export failed",
+        description: "We couldn't export your notes. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsExporting(false);
     }
@@ -703,7 +771,11 @@ export default function DocumentPage() {
       pdf.save(fileName);
     } catch (error) {
       console.error("Error exporting flashcards PDF:", error);
-      alert("Failed to export flashcards. Please try again.");
+      toast({
+        title: "Export failed",
+        description: "Unable to create flashcards PDF right now.",
+        variant: "destructive",
+      });
     } finally {
       setIsExportingFlashcards(false);
     }
@@ -738,7 +810,11 @@ export default function DocumentPage() {
       document.body.removeChild(link);
     } catch (error) {
       console.error("Error exporting flashcards CSV:", error);
-      alert("Failed to export flashcards. Please try again.");
+      toast({
+        title: "Export failed",
+        description: "Unable to export flashcards CSV right now.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -751,6 +827,46 @@ export default function DocumentPage() {
         <div className="fixed bottom-20 left-1/2 h-72 w-72 rounded-full bg-pink-500 mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000" />
         <div className="relative z-10 flex min-h-screen items-center justify-center text-[#1C1C1C]">
           <p>Loading your study workspace...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="relative min-h-screen overflow-hidden text-[#1C1C1C]">
+        <div className="fixed inset-0 bg-gradient-to-br from-purple-500 via-fuchsia-500 to-pink-500 animate-gradient" />
+        <div className="fixed top-20 left-20 h-72 w-72 rounded-full bg-purple-500 mix-blend-multiply filter blur-xl opacity-70 animate-blob" />
+        <div className="fixed top-40 right-20 h-72 w-72 rounded-full bg-fuchsia-500 mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000" />
+        <div className="fixed bottom-20 left-1/2 h-72 w-72 rounded-full bg-pink-500 mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000" />
+        <div className="relative z-10 flex min-h-screen items-center justify-center px-4">
+          <Card className="max-w-md w-full border border-white/30 bg-white/90 p-6 backdrop-blur-xl">
+            <div className="space-y-4">
+              <div>
+                <p className="text-lg font-semibold text-[#1C1C1C]">
+                  Unable to load this document
+                </p>
+                <p className="text-sm text-[#1C1C1C]/70">{loadError}</p>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Button
+                  className="flex-1"
+                  onClick={() => {
+                    void fetchDoc();
+                  }}
+                >
+                  Try again
+                </Button>
+                <Button
+                  className="flex-1"
+                  variant="outline"
+                  onClick={() => router.push("/dashboard")}
+                >
+                  Back to dashboard
+                </Button>
+              </div>
+            </div>
+          </Card>
         </div>
       </div>
     );

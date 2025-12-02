@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "../components/ui/card";
 import { BookOpen, Upload, Search, X } from "lucide-react";
+import { useToast } from "../components/ui/use-toast";
 
 interface Document {
   id: string;
@@ -25,6 +26,7 @@ interface Document {
 export default function DashboardPage() {
   const { user, logout, loading: authLoading } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -57,13 +59,31 @@ export default function DashboardPage() {
       if (response.ok) {
         const data = await response.json();
         setDocuments(data.documents);
+        setError("");
+      } else {
+        const errorData = await response.json().catch(() => null);
+        const message =
+          errorData?.error || "Failed to load documents. Please try again.";
+        setError(message);
+        toast({
+          title: "Unable to load documents",
+          description: message,
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error("Error fetching documents:", error);
+      const message = "Network error while fetching documents.";
+      setError(message);
+      toast({
+        title: "Unable to load documents",
+        description: message,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   const pollDocumentStatus = useCallback(
     async (documentId: string) => {
@@ -88,7 +108,13 @@ export default function DashboardPage() {
             setProcessingStatus("");
             setPendingDocumentId(null);
             clearPolling();
-            setError("Document processing failed. Please try again.");
+            const message = "Document processing failed. Please try again.";
+            setError(message);
+            toast({
+              title: "Processing failed",
+              description: message,
+              variant: "destructive",
+            });
             void fetchDocuments();
             return;
           }
@@ -108,7 +134,7 @@ export default function DashboardPage() {
         void pollDocumentStatus(documentId);
       }, 5000);
     },
-    [clearPolling, fetchDocuments, router]
+    [clearPolling, fetchDocuments, router, toast]
   );
 
   useEffect(() => {
@@ -131,14 +157,26 @@ export default function DashboardPage() {
     if (!file) return;
     setError("");
     if (file.type !== "application/pdf" && !file.name.endsWith(".docx")) {
-      setError("Only PDF and DOCX files are supported");
+      const message = "Only PDF and DOCX files are supported";
+      setError(message);
+      toast({
+        title: "Upload blocked",
+        description: message,
+        variant: "destructive",
+      });
       return;
     }
 
     // Check file size (10MB limit)
     const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
     if (file.size > MAX_FILE_SIZE) {
-      setError(`File is too large. Maximum file size is 10MB. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB.`);
+      const message = `File is too large. Maximum file size is 10MB. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB.`;
+      setError(message);
+      toast({
+        title: "File too large",
+        description: message,
+        variant: "destructive",
+      });
       return;
     }
 
@@ -158,9 +196,12 @@ export default function DashboardPage() {
       if (response.ok) {
         const result = await response.json();
         void fetchDocuments();
-        alert(
-          "File uploaded successfully! We’ll open the study workspace once processing is complete."
-        );
+        toast({
+          title: "Upload started",
+          description:
+            "We’ll open the study workspace once processing is complete.",
+          variant: "success",
+        });
         const newlyCreatedId: string | undefined = result.document?.id;
         if (newlyCreatedId) {
           setPendingDocumentId(newlyCreatedId);
@@ -176,10 +217,22 @@ export default function DashboardPage() {
         }
       } else {
         const errorData = await response.json();
-        setError(errorData.error || "Upload failed");
+        const message = errorData.error || "Upload failed";
+        setError(message);
+        toast({
+          title: "Upload failed",
+          description: message,
+          variant: "destructive",
+        });
       }
     } catch (error) {
-      setError("Upload failed. Please try again.");
+      const message = "Upload failed. Please try again.";
+      setError(message);
+      toast({
+        title: "Upload failed",
+        description: message,
+        variant: "destructive",
+      });
     } finally {
       setUploading(false);
     }
@@ -225,13 +278,25 @@ export default function DashboardPage() {
           setProcessingStatus("");
           clearPolling();
         }
-        alert("Document deleted successfully");
+        toast({
+          title: "Document deleted",
+          description: `"${fileName}" has been removed.`,
+          variant: "success",
+        });
       } else {
         const errorData = await response.json();
-        alert(errorData.error || "Failed to delete document");
+        toast({
+          title: "Failed to delete document",
+          description: errorData.error || "Please try again.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
-      alert("Failed to delete document. Please try again.");
+      toast({
+        title: "Failed to delete document",
+        description: "Network error. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setDeleting(null);
     }
