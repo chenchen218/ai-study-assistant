@@ -95,6 +95,17 @@ export async function GET(
   }
 }
 
+/**
+ * DELETE: Delete document and all associated data
+ * 
+ * This operation performs a cascading delete:
+ * 1. Deletes the file from S3 storage
+ * 2. Deletes all AI-generated content (Summary, Notes, Flashcards, QuizQuestions)
+ * 3. Deletes the document record from database
+ * 
+ * All deletions happen in parallel for performance.
+ * S3 deletion failure is non-blocking (continues with DB deletion).
+ */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -102,11 +113,13 @@ export async function DELETE(
   try {
     await connectDB();
 
+    // Authenticate user
     const userId = getUserIdFromRequest(request);
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Extract document ID from route parameters
     const resolvedParams = await params;
     const documentId = resolvedParams.id;
 
@@ -118,6 +131,7 @@ export async function DELETE(
     }
 
     // Find the document and verify ownership
+    // Only the document owner can delete it
     const document = await Document.findOne({
       _id: documentId,
       userId,
@@ -130,15 +144,21 @@ export async function DELETE(
       );
     }
 
-    // Delete file from S3
+    // Delete file from S3 storage
+    // This frees up storage space and reduces costs
+    // If S3 deletion fails, we continue with database deletion
+    // (non-blocking to ensure data consistency)
     try {
       await deleteFromS3(document.s3Key);
     } catch (s3Error: any) {
       console.error("Error deleting from S3:", s3Error);
       // Continue with database deletion even if S3 deletion fails
+      // This ensures database consistency even if S3 is temporarily unavailable
     }
 
-    // Delete all related data
+    // Delete all related AI-generated content in parallel
+    // This includes: Summary, Notes, Flashcards, and QuizQuestions
+    // Promise.all ensures all deletions happen concurrently
     await Promise.all([
       Summary.deleteMany({ documentId }),
       Note.deleteMany({ documentId }),
@@ -146,7 +166,8 @@ export async function DELETE(
       QuizQuestion.deleteMany({ documentId }),
     ]);
 
-    // Delete the document itself
+    // Delete the document record itself
+    // This is the final step after all related data is deleted
     await Document.deleteOne({ _id: documentId, userId });
 
     return NextResponse.json(

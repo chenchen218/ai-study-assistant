@@ -1,3 +1,39 @@
+/**
+ * Document Upload and Processing API Route
+ * 
+ * This endpoint handles file uploads, text extraction, and asynchronous AI content generation.
+ * 
+ * Flow:
+ * 1. Authenticate user and validate request
+ * 2. Validate file type (PDF/DOCX only) and size (10MB max)
+ * 3. Upload file to AWS S3 for persistent storage
+ * 4. Extract text from PDF or DOCX file
+ * 5. Truncate text to 10,000 characters (to avoid AI token limits)
+ * 6. Save document metadata to database with "processing" status
+ * 7. Asynchronously generate AI content (Summary, Notes, Flashcards, Quiz)
+ * 8. Update document status to "completed" or "failed"
+ * 
+ * AI Content Generation:
+ * - Summary: Comprehensive overview of the document
+ * - Notes: Detailed study notes with markdown formatting
+ * - Flashcards: 10 interactive Q&A flashcards
+ * - Quiz: 5 multiple-choice questions with explanations
+ * 
+ * Processing Strategy:
+ * - Uses Promise.allSettled() for resilience (partial failures don't block others)
+ * - Processing happens asynchronously (non-blocking upload response)
+ * - Frontend polls document status until processing completes
+ * 
+ * Security:
+ * - Rate limiting to prevent abuse
+ * - File type validation
+ * - File size limits
+ * - User authentication required
+ * 
+ * @route POST /api/documents
+ * @access Protected (requires authentication)
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { Document } from "@/models/Document";
@@ -17,11 +53,12 @@ import { Flashcard } from "@/models/Flashcard";
 import { QuizQuestion } from "@/models/QuizQuestion";
 import { rateLimiters } from "@/lib/rate-limit";
 
-// Force dynamic rendering since we use request.headers
+// Force dynamic rendering since we use request.headers for authentication
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
-  // Apply rate limiting
+  // Apply rate limiting to prevent abuse
+  // Limits: 10 uploads per 15 minutes per user
   const rateLimitResponse = rateLimiters.documents(request);
   if (rateLimitResponse) {
     return rateLimitResponse;
@@ -30,11 +67,13 @@ export async function POST(request: NextRequest) {
   try {
     await connectDB();
 
+    // Authenticate user and get userId from JWT token
     const userId = getUserIdFromRequest(request);
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Extract file from FormData (multipart/form-data)
     const formData = await request.formData();
     const file = formData.get("file") as File;
 
@@ -42,7 +81,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    // Validate file type
+    // Validate file type - only PDF and DOCX are supported
+    // Extract file extension from filename
     const fileType = file.name.split(".").pop()?.toLowerCase();
     if (fileType !== "pdf" && fileType !== "docx") {
       return NextResponse.json(
@@ -51,7 +91,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate file size (10MB limit)
+    // Validate file size - maximum 10MB to prevent abuse and ensure reasonable processing times
     const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
@@ -60,14 +100,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Convert file to buffer
+    // Convert file to Buffer for processing
+    // ArrayBuffer is needed for Node.js Buffer operations
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Upload to S3
+    // Upload file to AWS S3 for persistent storage
+    // Returns S3 key (file path) and public URL
     const { key, url } = await uploadToS3(buffer, file.name, file.type);
 
-    // Extract text from file
+    // Extract text from file based on file type
+    // PDF: Use pdf-parse library
+    // DOCX: Use mammoth library to extract raw text
     let extractedText = "";
     if (fileType === "pdf") {
       const pdfData = await pdfParse(buffer);
@@ -77,6 +121,7 @@ export async function POST(request: NextRequest) {
       extractedText = result.value;
     }
 
+    // Validate that text extraction was successful
     if (!extractedText || extractedText.trim().length === 0) {
       return NextResponse.json(
         { error: "Could not extract text from file" },
@@ -84,26 +129,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Limit text length for AI processing (to avoid token limits)
+    // Truncate text to 10,000 characters to avoid AI token limits
+    // Most AI models have token limits, and very long documents can exceed these
+    // This ensures consistent processing and cost control
     const maxLength = 10000;
     const truncatedText =
       extractedText.length > maxLength
         ? extractedText.substring(0, maxLength) + "..."
         : extractedText;
 
-    // Save document to database
+    // Save document metadata to database with "processing" status
+    // Status will be updated to "completed" or "failed" after AI processing
     const document = await Document.create({
       userId,
       fileName: file.name,
       fileType: fileType as "pdf" | "docx",
       fileSize: file.size,
-      s3Key: key,
-      s3Url: url,
+      s3Key: key,        // S3 object key for file retrieval
+      s3Url: url,        // Public URL (if bucket is public) or signed URL
       originalName: file.name,
-      status: "processing",
+      status: "processing", // Will be updated after AI processing completes
     });
 
     // Check if GEMINI_API_KEY is configured
+    // If not, mark document as failed and return early
     if (!process.env.GEMINI_API_KEY) {
       console.error("❌ GEMINI_API_KEY is not set in environment variables");
       document.status = "failed";
@@ -122,8 +171,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate AI content asynchronously with Promise.allSettled for resilience
+    // Generate AI content asynchronously using Promise.allSettled
+    // This allows partial success - if one AI generation fails, others can still succeed
+    // Processing happens in the background, so we return immediately to the client
     Promise.allSettled([
+      // Generate Summary: Comprehensive overview of the document
       generateSummary(truncatedText)
         .then(async (summaryContent) => {
           if (summaryContent && summaryContent.trim()) {
@@ -141,6 +193,8 @@ export async function POST(request: NextRequest) {
           console.error("❌ Error generating summary:", err?.message || err);
           throw err;
         }),
+      
+      // Generate Notes: Detailed study notes with markdown formatting
       generateNotes(truncatedText)
         .then(async (notesContent) => {
           if (notesContent && notesContent.trim()) {
@@ -159,6 +213,8 @@ export async function POST(request: NextRequest) {
           console.error("❌ Error generating notes:", err?.message || err);
           throw err;
         }),
+      
+      // Generate Flashcards: 10 interactive Q&A flashcards for practice
       generateFlashcards(truncatedText, 10)
         .then(async (flashcards) => {
           if (flashcards && flashcards.length > 0) {
@@ -179,6 +235,8 @@ export async function POST(request: NextRequest) {
           console.error("❌ Error generating flashcards:", err?.message || err);
           throw err;
         }),
+      
+      // Generate Quiz Questions: 5 multiple-choice questions with explanations
       generateQuizQuestions(truncatedText, 5)
         .then(async (questions) => {
           if (questions && questions.length > 0) {
@@ -212,6 +270,7 @@ export async function POST(request: NextRequest) {
           throw err;
         }),
     ]).then(async (results) => {
+      // Count successful and failed operations
       const successes = results.filter((r) => r.status === "fulfilled").length;
       const failures = results.filter((r) => r.status === "rejected").length;
 
@@ -219,7 +278,7 @@ export async function POST(request: NextRequest) {
         `✅ AI content generation completed: ${successes} succeeded, ${failures} failed`
       );
 
-      // Log detailed errors for failed operations
+      // Log detailed errors for failed operations to help with debugging
       results.forEach((result, index) => {
         if (result.status === "rejected") {
           const operationNames = [
@@ -235,8 +294,10 @@ export async function POST(request: NextRequest) {
         }
       });
 
-      // Mark as completed if at least one operation succeeded
-      // Otherwise mark as failed
+      // Update document status based on results
+      // If at least one AI generation succeeded, mark as completed
+      // This allows partial success - user can still use successfully generated content
+      // If all failed, mark as failed
       if (successes > 0) {
         document.status = "completed";
         console.log(
@@ -251,13 +312,16 @@ export async function POST(request: NextRequest) {
       await document.save();
     });
 
+    // Return immediately with document ID and status
+    // Client will poll /api/documents/:id to check when processing completes
+    // This non-blocking approach provides better user experience
     return NextResponse.json(
       {
         message: "File uploaded successfully",
         document: {
           id: document._id,
           fileName: document.fileName,
-          status: document.status,
+          status: document.status, // Will be "processing" initially
         },
       },
       { status: 201 }
