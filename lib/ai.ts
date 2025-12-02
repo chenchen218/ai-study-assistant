@@ -1,43 +1,88 @@
+/**
+ * AI Content Generation Module
+ * 
+ * This module provides functions for generating educational content using Google's Gemini AI.
+ * It handles all AI-powered features including summaries, notes, flashcards, and quiz questions.
+ * 
+ * Features:
+ * - Automatic model selection with fallback support
+ * - Model caching for performance
+ * - Error handling and graceful degradation
+ * - JSON parsing with fallback strategies
+ * 
+ * Model Selection:
+ * The system tries multiple Gemini models in order of preference and caches the first working one.
+ * This ensures compatibility even when Google updates model names or availability.
+ * 
+ * Content Generation:
+ * - Summary: Comprehensive document overview
+ * - Notes: Detailed study notes with markdown formatting
+ * - Flashcards: Interactive Q&A cards for practice
+ * - Quiz Questions: Multiple-choice questions with explanations
+ * - Q&A: Contextual answers to user questions
+ * 
+ * @module lib/ai
+ */
+
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+// Get Gemini API key from environment variables
+// This key is required for all AI features
 const apiKey = process.env.GEMINI_API_KEY || "";
 
 if (!apiKey) {
   console.error("GEMINI_API_KEY is not set in environment variables");
 }
 
+// Initialize Google Generative AI client
 const genAI = new GoogleGenerativeAI(apiKey);
 
-// Try multiple models in order of preference
-// Cache the working model to avoid repeated API calls
+// Cache for the working model name
+// This avoids repeated API calls to test model availability
+// Once a working model is found, it's reused for all subsequent requests
 let cachedWorkingModel: string | null = null;
 
 /**
  * Gets a working Gemini AI model by trying multiple model names in order
- * Caches the working model to avoid repeated API calls
+ * 
+ * This function implements a fallback strategy to ensure compatibility:
+ * 1. Check if we have a cached working model (use it if available)
+ * 2. Try models in order of preference (latest → stable → experimental)
+ * 3. Test each model with a simple API call
+ * 4. Cache the first working model for future use
+ * 5. Throw error if no models work
+ * 
+ * Why this approach?
+ * - Google frequently updates model names and availability
+ * - Different regions may have different model availability
+ * - Caching reduces API calls and improves performance
+ * 
  * @returns Promise resolving to a configured Gemini model instance
  * @throws {Error} If no working model is found after trying all options
  */
 const getModel = async (): Promise<any> => {
-  // If we have a cached working model, use it
+  // If we have a cached working model, use it immediately
+  // This avoids unnecessary API calls
   if (cachedWorkingModel) {
     return genAI.getGenerativeModel({ model: cachedWorkingModel });
   }
 
   // Try models in order: latest stable, then alternatives
+  // Order matters: we prefer newer, more capable models first
   const modelsToTry = [
-    "models/gemini-2.5-flash-preview-05-20", // What test endpoint found
-    "models/gemini-2.5-flash", // Stable version
-    "models/gemini-2.0-flash-exp", // Experimental but available
-    "models/gemini-flash-latest", // Latest alias
-    "models/gemini-2.0-flash", // Alternative
+    "models/gemini-2.5-flash-preview-05-20", // Latest preview version
+    "models/gemini-2.5-flash",                 // Stable version
+    "models/gemini-2.0-flash-exp",            // Experimental but available
+    "models/gemini-flash-latest",             // Latest alias (may change)
+    "models/gemini-2.0-flash",                // Alternative stable version
   ];
 
   // Try each model until one works
   for (const modelName of modelsToTry) {
     try {
       const model = genAI.getGenerativeModel({ model: modelName });
-      // Test if it works with a simple call
+      // Test if it works with a simple API call
+      // This validates the model is available and API key is valid
       const testResult = await model.generateContent("test");
       await testResult.response;
       // If we get here, the model works
@@ -45,12 +90,13 @@ const getModel = async (): Promise<any> => {
       console.log(`✅ Using working model: ${modelName}`);
       return model;
     } catch (err: any) {
-      // Try next model
+      // Model not available or API error - try next model
       continue;
     }
   }
 
   // If all models fail, throw an error
+  // This indicates either API key is invalid or all models are unavailable
   throw new Error(
     "No working Gemini model found. Please check your API key and model availability."
   );
