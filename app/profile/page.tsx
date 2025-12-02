@@ -657,94 +657,96 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          {/* Update Email */}
-          <Card className="mb-4 bg-white/20 backdrop-blur-xl border-white/30">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <Mail className="h-5 w-5" />
-                Update Email
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-white/90 mb-1">
-                  Current Email
-                </label>
-                <Input
-                  type="email"
-                  value={email}
-                  disabled
-                  className="bg-white/10 border-white/20 text-white/70"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-white/90 mb-1">
-                  New Email
-                </label>
-                <div className="flex gap-2">
-                  <Input
-                    type="email"
-                    value={newEmail}
-                    onChange={(e) => {
-                      setNewEmail(e.target.value);
-                      setCodeSent(false);
-                      setEmailVerified(false);
-                    }}
-                    placeholder="Enter new email"
-                    className="bg-white/20 border-white/30 text-white placeholder:text-white/60 focus:bg-white/30 flex-1"
-                  />
-                  <Button
-                    type="button"
-                    onClick={handleSendCode}
-                    disabled={sendingCode || emailVerified || !newEmail}
-                    className="bg-white/20 text-white hover:bg-white/30 border border-white/40 whitespace-nowrap"
-                  >
-                    {sendingCode ? "Sending..." : codeSent ? "Resend" : "Send Code"}
-                  </Button>
-                </div>
-              </div>
-              {codeSent && !emailVerified && (
+          {/* Update Email (only for local accounts - OAuth users' emails are managed by their provider) */}
+          {(!user?.provider || user.provider === "local") && (
+            <Card className="mb-4 bg-white/20 backdrop-blur-xl border-white/30">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Mail className="h-5 w-5" />
+                  Update Email
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-white/90 mb-1">
-                    Verification Code
+                    Current Email
+                  </label>
+                  <Input
+                    type="email"
+                    value={email}
+                    disabled
+                    className="bg-white/10 border-white/20 text-white/70"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-white/90 mb-1">
+                    New Email
                   </label>
                   <div className="flex gap-2">
                     <Input
-                      type="text"
-                      value={verificationCode}
-                      onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                      placeholder="Enter 6-digit code"
-                      maxLength={6}
+                      type="email"
+                      value={newEmail}
+                      onChange={(e) => {
+                        setNewEmail(e.target.value);
+                        setCodeSent(false);
+                        setEmailVerified(false);
+                      }}
+                      placeholder="Enter new email"
                       className="bg-white/20 border-white/30 text-white placeholder:text-white/60 focus:bg-white/30 flex-1"
                     />
                     <Button
                       type="button"
-                      onClick={handleVerifyCode}
-                      disabled={verifyingCode || verificationCode.length !== 6}
+                      onClick={handleSendCode}
+                      disabled={sendingCode || emailVerified || !newEmail}
                       className="bg-white/20 text-white hover:bg-white/30 border border-white/40 whitespace-nowrap"
                     >
-                      {verifyingCode ? "Verifying..." : "Verify"}
+                      {sendingCode ? "Sending..." : codeSent ? "Resend" : "Send Code"}
                     </Button>
                   </div>
                 </div>
-              )}
-              {emailVerified && (
-                <div className="bg-green-400/20 border border-green-300/50 text-green-50 px-4 py-2 rounded-lg text-sm">
-                  ✓ Email verified
-                </div>
-              )}
-              <Button
-                onClick={handleUpdateEmail}
-                disabled={loading || !emailVerified}
-                className="bg-white/20 text-white hover:bg-white/30 border border-white/40 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? "Updating..." : "Update Email"}
-              </Button>
-            </CardContent>
-          </Card>
+                {codeSent && !emailVerified && (
+                  <div>
+                    <label className="block text-sm font-medium text-white/90 mb-1">
+                      Verification Code
+                    </label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="text"
+                        value={verificationCode}
+                        onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        placeholder="Enter 6-digit code"
+                        maxLength={6}
+                        className="bg-white/20 border-white/30 text-white placeholder:text-white/60 focus:bg-white/30 flex-1"
+                      />
+                      <Button
+                        type="button"
+                        onClick={handleVerifyCode}
+                        disabled={verifyingCode || verificationCode.length !== 6}
+                        className="bg-white/20 text-white hover:bg-white/30 border border-white/40 whitespace-nowrap"
+                      >
+                        {verifyingCode ? "Verifying..." : "Verify"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {emailVerified && (
+                  <div className="bg-green-400/20 border border-green-300/50 text-green-50 px-4 py-2 rounded-lg text-sm">
+                    ✓ Email verified
+                  </div>
+                )}
+                <Button
+                  onClick={handleUpdateEmail}
+                  disabled={loading || !emailVerified}
+                  className="bg-white/20 text-white hover:bg-white/30 border border-white/40 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? "Updating..." : "Update Email"}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
-          {/* Change Password (only for local accounts) */}
-          {(!user?.provider || user.provider === "local" || user?.provider === undefined) && (
+          {/* Change Password (only for local accounts - OAuth users don't have passwords) */}
+          {(!user?.provider || user.provider === "local") && (
             <Card className="mb-4 bg-white/20 backdrop-blur-xl border-white/30">
               <CardHeader>
                 <CardTitle className="text-white flex items-center gap-2">
