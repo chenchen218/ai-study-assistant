@@ -664,9 +664,17 @@ Return ONLY the JSON object, no markdown code blocks, no additional text.`;
 
     const model = await getModel();
     
-    // Generate content with the YouTube URL
-    // Gemini can directly process YouTube URLs as part of the prompt
-    const result = await model.generateContent(prompt);
+    // Generate content with the YouTube URL using fileData format
+    // Gemini can analyze YouTube videos when passed as fileData
+    const result = await model.generateContent([
+      {
+        fileData: {
+          mimeType: "video/mp4",
+          fileUri: youtubeUrl,
+        },
+      },
+      { text: prompt },
+    ]);
     const response = await result.response;
     const text = response.text().trim();
 
