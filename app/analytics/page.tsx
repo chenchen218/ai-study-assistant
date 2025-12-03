@@ -310,7 +310,9 @@ export default function AnalyticsPage() {
                       : "N/A"}
                   </p>
                   <p className="text-sm text-gray-500 mt-2">
-                    {data.flashcards.known} / {data.flashcards.total} mastered
+                    {data.flashcards.known > 0 
+                      ? `${data.flashcards.known} mastered`
+                      : "No mastered cards"}
                   </p>
                 </div>
                 <div className="text-gray-400">
@@ -347,10 +349,6 @@ export default function AnalyticsPage() {
                   <X className="h-4 w-4" />
                 </Button>
               </div>
-              
-              <p className="text-sm text-gray-600 mb-4">
-                Review your mastered flashcards. If you feel you&apos;ve forgotten one, click the remove button to reset its mastery status.
-              </p>
 
               {loadingMastered ? (
                 <div className="text-center py-8 text-gray-500">
