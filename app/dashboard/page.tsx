@@ -13,7 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../components/ui/card";
-import { BookOpen, Upload, Search, X, Folder, FolderPlus, Edit2, Trash2, GripVertical } from "lucide-react";
+import { BookOpen, Upload, Search, X, Folder, FolderPlus, Edit2, Trash2, GripVertical, Youtube, AlertTriangle, CheckCircle, Clock, ExternalLink } from "lucide-react";
 import { Input } from "../components/ui/input";
 
 interface Document {
@@ -23,6 +23,25 @@ interface Document {
   status: string;
   folderId: string | null;
   uploadedAt: string;
+  youtubeUrl?: string;
+  youtubeThumbnail?: string;
+  videoDuration?: number;
+}
+
+interface YouTubeVideoInfo {
+  valid: boolean;
+  videoId: string;
+  title: string;
+  channelTitle: string;
+  thumbnail: string;
+  duration: number;
+  durationFormatted: string;
+  categoryId: string;
+  isEducational: boolean;
+  educationalConfidence: number;
+  educationalReason: string;
+  remaining: number;
+  dailyLimit: number;
 }
 
 interface FolderType {
@@ -61,6 +80,14 @@ export default function DashboardPage() {
   const [renamingDocumentName, setRenamingDocumentName] = useState("");
   const [draggedDocumentId, setDraggedDocumentId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
+  
+  // YouTube states
+  const [showYouTubeModal, setShowYouTubeModal] = useState(false);
+  const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [youtubeValidating, setYoutubeValidating] = useState(false);
+  const [youtubeVideoInfo, setYoutubeVideoInfo] = useState<YouTubeVideoInfo | null>(null);
+  const [youtubeError, setYoutubeError] = useState("");
+  const [youtubeSubmitting, setYoutubeSubmitting] = useState(false);
 
   const clearPolling = useCallback(() => {
     if (pollingTimeoutRef.current) {
@@ -99,6 +126,103 @@ export default function DashboardPage() {
       setLoading(false);
     }
   }, []);
+
+  // YouTube validation function
+  const validateYouTubeUrl = useCallback(async (url: string) => {
+    if (!url.trim()) {
+      setYoutubeVideoInfo(null);
+      setYoutubeError("");
+      return;
+    }
+
+    setYoutubeValidating(true);
+    setYoutubeError("");
+    setYoutubeVideoInfo(null);
+
+    try {
+      const response = await fetch("/api/youtube/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ url }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setYoutubeError(data.message || data.error || "Invalid YouTube URL");
+        return;
+      }
+
+      setYoutubeVideoInfo(data);
+    } catch (error) {
+      console.error("YouTube validation error:", error);
+      setYoutubeError("Failed to validate YouTube URL");
+    } finally {
+      setYoutubeValidating(false);
+    }
+  }, []);
+
+  // YouTube submit function
+  const handleYouTubeSubmit = useCallback(async () => {
+    if (!youtubeVideoInfo) return;
+
+    setYoutubeSubmitting(true);
+    setYoutubeError("");
+
+    try {
+      const response = await fetch("/api/youtube", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          videoId: youtubeVideoInfo.videoId,
+          url: youtubeUrl,
+          title: youtubeVideoInfo.title,
+          thumbnail: youtubeVideoInfo.thumbnail,
+          duration: youtubeVideoInfo.duration,
+          categoryId: youtubeVideoInfo.categoryId,
+          isEducational: youtubeVideoInfo.isEducational,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setYoutubeError(data.message || data.error || "Failed to add video");
+        return;
+      }
+
+      // Success - close modal and refresh documents
+      setShowYouTubeModal(false);
+      setYoutubeUrl("");
+      setYoutubeVideoInfo(null);
+      fetchDocuments();
+      
+      // Start polling for the new document
+      if (data.document?.id) {
+        setPendingDocumentId(data.document.id);
+        setProcessingStatus("Processing YouTube video. This may take a few minutes...");
+        pollDocumentStatus(data.document.id);
+      }
+    } catch (error) {
+      console.error("YouTube submit error:", error);
+      setYoutubeError("Failed to add YouTube video");
+    } finally {
+      setYoutubeSubmitting(false);
+    }
+  }, [youtubeVideoInfo, youtubeUrl, fetchDocuments, pollDocumentStatus]);
+
+  // Debounced YouTube URL validation
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (youtubeUrl.trim()) {
+        validateYouTubeUrl(youtubeUrl);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [youtubeUrl, validateYouTubeUrl]);
 
   const pollDocumentStatus = useCallback(
     async (documentId: string) => {
@@ -631,13 +755,23 @@ export default function DashboardPage() {
                       </p>
                     )}
                   </div>
-                  <Button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
-                    className="rounded-lg border border-white/25 bg-white/20 px-5 py-2.5 text-white transition hover:bg-white/30 disabled:opacity-50"
-                  >
-                    {uploading ? "Uploading..." : "Choose File"}
-                  </Button>
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      className="rounded-lg border border-white/25 bg-white/20 px-5 py-2.5 text-white transition hover:bg-white/30 disabled:opacity-50"
+                    >
+                      {uploading ? "Uploading..." : "Choose File"}
+                    </Button>
+                    <Button
+                      onClick={() => setShowYouTubeModal(true)}
+                      disabled={uploading}
+                      className="rounded-lg border border-red-400/50 bg-red-500/20 px-5 py-2.5 text-white transition hover:bg-red-500/30 disabled:opacity-50 flex items-center gap-2"
+                    >
+                      <Youtube className="h-4 w-4" />
+                      YouTube
+                    </Button>
+                  </div>
                   {error && <p className="text-xs text-red-200">{error}</p>}
                   {processingStatus && (
                     <p className="text-xs text-white/80">{processingStatus}</p>
@@ -1099,6 +1233,165 @@ export default function DashboardPage() {
           </section>
         </main>
       </div>
+
+      {/* YouTube Modal */}
+      {showYouTubeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-lg mx-4 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 border border-white/20 shadow-2xl">
+            <div className="flex items-center justify-between p-6 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="rounded-xl bg-red-500/20 p-2.5">
+                  <Youtube className="h-5 w-5 text-red-400" />
+                </div>
+                <h2 className="text-xl font-semibold text-white">Add YouTube Video</h2>
+              </div>
+              <button
+                onClick={() => {
+                  setShowYouTubeModal(false);
+                  setYoutubeUrl("");
+                  setYoutubeVideoInfo(null);
+                  setYoutubeError("");
+                }}
+                className="rounded-lg p-2 text-white/60 hover:bg-white/10 hover:text-white transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* URL Input */}
+              <div>
+                <label className="block text-sm font-medium text-white/80 mb-2">
+                  YouTube URL *
+                </label>
+                <input
+                  type="text"
+                  value={youtubeUrl}
+                  onChange={(e) => setYoutubeUrl(e.target.value)}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  className="w-full rounded-lg border border-white/20 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-white/10"
+                />
+              </div>
+
+              {/* Loading State */}
+              {youtubeValidating && (
+                <div className="flex items-center gap-3 p-4 rounded-lg bg-white/5 border border-white/10">
+                  <div className="animate-spin h-5 w-5 border-2 border-white/20 border-t-white rounded-full" />
+                  <span className="text-white/80">Validating video...</span>
+                </div>
+              )}
+
+              {/* Error Message */}
+              {youtubeError && (
+                <div className="flex items-start gap-3 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+                  <AlertTriangle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+                  <span className="text-red-300">{youtubeError}</span>
+                </div>
+              )}
+
+              {/* Video Preview */}
+              {youtubeVideoInfo && !youtubeValidating && (
+                <div className="rounded-lg bg-white/5 border border-white/10 overflow-hidden">
+                  <div className="flex gap-4 p-4">
+                    {youtubeVideoInfo.thumbnail && (
+                      <div className="shrink-0">
+                        <Image
+                          src={youtubeVideoInfo.thumbnail}
+                          alt={youtubeVideoInfo.title}
+                          width={160}
+                          height={90}
+                          className="rounded-lg object-cover"
+                          unoptimized
+                        />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-white line-clamp-2">{youtubeVideoInfo.title}</h3>
+                      <p className="text-sm text-white/60 mt-1">{youtubeVideoInfo.channelTitle}</p>
+                      <div className="flex items-center gap-3 mt-2">
+                        <span className="flex items-center gap-1 text-sm text-white/60">
+                          <Clock className="h-4 w-4" />
+                          {youtubeVideoInfo.durationFormatted}
+                        </span>
+                        {youtubeVideoInfo.isEducational ? (
+                          <span className="flex items-center gap-1 text-sm text-green-400">
+                            <CheckCircle className="h-4 w-4" />
+                            Educational
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-sm text-yellow-400">
+                            <AlertTriangle className="h-4 w-4" />
+                            May not be educational
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Educational Warning */}
+                  {!youtubeVideoInfo.isEducational && (
+                    <div className="px-4 pb-4">
+                      <div className="flex items-start gap-2 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+                        <AlertTriangle className="h-4 w-4 text-yellow-400 shrink-0 mt-0.5" />
+                        <p className="text-sm text-yellow-300">
+                          This video may not be educational content. Study materials quality may be limited.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Usage Limits Info */}
+              <div className="rounded-lg bg-white/5 border border-white/10 p-4">
+                <h4 className="text-sm font-medium text-white/80 mb-2">📋 Usage Limits</h4>
+                <ul className="space-y-1 text-sm text-white/60">
+                  <li>• 3 videos per day per user</li>
+                  <li>• Maximum video length: 60 minutes</li>
+                  <li>• Recommended: Educational lectures & tutorials</li>
+                </ul>
+                {youtubeVideoInfo && (
+                  <p className="mt-3 text-sm font-medium text-indigo-400">
+                    ⏱️ You have {youtubeVideoInfo.remaining} remaining today
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="flex justify-end gap-3 p-6 border-t border-white/10">
+              <Button
+                onClick={() => {
+                  setShowYouTubeModal(false);
+                  setYoutubeUrl("");
+                  setYoutubeVideoInfo(null);
+                  setYoutubeError("");
+                }}
+                className="rounded-lg border border-white/20 bg-transparent px-5 py-2.5 text-white hover:bg-white/10"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleYouTubeSubmit}
+                disabled={!youtubeVideoInfo || youtubeSubmitting || youtubeValidating}
+                className="rounded-lg bg-red-500 px-5 py-2.5 text-white hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {youtubeSubmitting ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 border-2 border-white/20 border-t-white rounded-full" />
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <Youtube className="h-4 w-4" />
+                    Add Video
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

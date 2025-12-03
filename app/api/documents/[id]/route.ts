@@ -131,6 +131,10 @@ export async function GET(
         fileType: document.fileType,
         uploadedAt: document.uploadedAt,
         status: document.status, // "processing", "completed", or "failed"
+        // YouTube-specific fields (only present for YouTube documents)
+        youtubeUrl: document.youtubeUrl,
+        youtubeThumbnail: document.youtubeThumbnail,
+        videoDuration: document.videoDuration,
       },
       summary: summary
         ? {
@@ -233,16 +237,19 @@ export async function DELETE(
       );
     }
 
-    // Delete file from S3 storage
+    // Delete file from S3 storage (only for non-YouTube documents)
+    // YouTube documents don't have S3 files
     // This frees up storage space and reduces AWS costs
     // If S3 deletion fails, we continue with database deletion
     // This ensures database consistency even if S3 is temporarily unavailable
-    try {
-      await deleteFromS3(document.s3Key);
-    } catch (s3Error: any) {
-      console.error("Error deleting from S3:", s3Error);
-      // Continue with database deletion even if S3 deletion fails
-      // This ensures data consistency
+    if (document.s3Key) {
+      try {
+        await deleteFromS3(document.s3Key);
+      } catch (s3Error: any) {
+        console.error("Error deleting from S3:", s3Error);
+        // Continue with database deletion even if S3 deletion fails
+        // This ensures data consistency
+      }
     }
 
     // Delete all related AI-generated content in parallel
