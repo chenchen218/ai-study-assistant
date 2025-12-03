@@ -15,8 +15,8 @@ import mongoose from "mongoose";
 import connectDB from "@/lib/db";
 import { getUserIdFromRequest } from "@/lib/auth";
 import { FlashcardPerformance } from "@/models/FlashcardPerformance";
-import { Flashcard, IFlashcard } from "@/models/Flashcard";
-import { Document as DocumentModel, IDocument } from "@/models/Document";
+import { Flashcard } from "@/models/Flashcard";
+import { Document as DocumentModel } from "@/models/Document";
 
 // Force dynamic rendering since we use request.headers for authentication
 export const dynamic = 'force-dynamic';
@@ -47,28 +47,30 @@ export async function GET(request: NextRequest) {
     // Get unique flashcard IDs
     const flashcardIds = [...new Set(masteredPerformances.map(p => p.flashcardId.toString()))];
 
-    // Fetch flashcard details with explicit typing
-    const flashcards: IFlashcard[] = await Flashcard.find({
+    // Fetch flashcard details
+    const flashcards = await Flashcard.find({
       _id: { $in: flashcardIds.map(id => new mongoose.Types.ObjectId(id)) }
-    });
+    }).lean();
 
     // Create a map for quick lookup
-    const flashcardMap = new Map<string, IFlashcard>(
-      flashcards.map(f => [f._id.toString(), f])
-    );
+    const flashcardMap = new Map<string, typeof flashcards[0]>();
+    for (const f of flashcards) {
+      flashcardMap.set(String(f._id), f);
+    }
 
     // Get document IDs from flashcards
-    const documentIds = [...new Set(flashcards.map(f => f.documentId.toString()))];
+    const documentIds = [...new Set(flashcards.map(f => String(f.documentId)))];
 
-    // Fetch document details with explicit typing
-    const documents: IDocument[] = await DocumentModel.find({
+    // Fetch document details
+    const documents = await DocumentModel.find({
       _id: { $in: documentIds.map(id => new mongoose.Types.ObjectId(id)) }
-    });
+    }).lean();
 
     // Create a map for quick lookup
-    const documentMap = new Map<string, IDocument>(
-      documents.map(d => [d._id.toString(), d])
-    );
+    const documentMap = new Map<string, typeof documents[0]>();
+    for (const d of documents) {
+      documentMap.set(String(d._id), d);
+    }
 
     // Build response with flashcard details
     // Group by flashcard to avoid duplicates (user might have marked same card multiple times)
@@ -83,14 +85,14 @@ export async function GET(request: NextRequest) {
       const flashcard = flashcardMap.get(flashcardId);
       if (!flashcard) continue; // Flashcard might have been deleted
 
-      const document = documentMap.get(flashcard.documentId.toString());
+      const document = documentMap.get(String(flashcard.documentId));
 
       masteredFlashcardsMap.set(flashcardId, {
-        performanceId: performance._id.toString(),
+        performanceId: String(performance._id),
         flashcardId: flashcardId,
         question: flashcard.question,
         answer: flashcard.answer,
-        documentId: flashcard.documentId.toString(),
+        documentId: String(flashcard.documentId),
         documentName: document?.fileName || "Unknown Document",
         masteredAt: performance.reviewedAt,
       });
