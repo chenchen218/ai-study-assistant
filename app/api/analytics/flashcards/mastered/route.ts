@@ -15,8 +15,8 @@ import mongoose from "mongoose";
 import connectDB from "@/lib/db";
 import { getUserIdFromRequest } from "@/lib/auth";
 import { FlashcardPerformance } from "@/models/FlashcardPerformance";
-import { Flashcard } from "@/models/Flashcard";
-import { Document } from "@/models/Document";
+import { Flashcard, IFlashcard } from "@/models/Flashcard";
+import { Document as DocumentModel, IDocument } from "@/models/Document";
 
 // Force dynamic rendering since we use request.headers for authentication
 export const dynamic = 'force-dynamic';
@@ -47,24 +47,28 @@ export async function GET(request: NextRequest) {
     // Get unique flashcard IDs
     const flashcardIds = [...new Set(masteredPerformances.map(p => p.flashcardId.toString()))];
 
-    // Fetch flashcard details
-    const flashcards = await Flashcard.find({
+    // Fetch flashcard details with explicit typing
+    const flashcards: IFlashcard[] = await Flashcard.find({
       _id: { $in: flashcardIds.map(id => new mongoose.Types.ObjectId(id)) }
     });
 
     // Create a map for quick lookup
-    const flashcardMap = new Map(flashcards.map(f => [f._id.toString(), f]));
+    const flashcardMap = new Map<string, IFlashcard>(
+      flashcards.map(f => [f._id.toString(), f])
+    );
 
     // Get document IDs from flashcards
     const documentIds = [...new Set(flashcards.map(f => f.documentId.toString()))];
 
-    // Fetch document details
-    const documents = await Document.find({
+    // Fetch document details with explicit typing
+    const documents: IDocument[] = await DocumentModel.find({
       _id: { $in: documentIds.map(id => new mongoose.Types.ObjectId(id)) }
     });
 
     // Create a map for quick lookup
-    const documentMap = new Map(documents.map(d => [d._id.toString(), d]));
+    const documentMap = new Map<string, IDocument>(
+      documents.map(d => [d._id.toString(), d])
+    );
 
     // Build response with flashcard details
     // Group by flashcard to avoid duplicates (user might have marked same card multiple times)
