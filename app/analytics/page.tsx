@@ -416,13 +416,11 @@ export default function AnalyticsPage() {
                     Flashcard Mastery
                   </h3>
                   <p className="text-3xl font-bold text-gray-900">
-                    {data.flashcards.total > 0
-                      ? `${Math.round(data.flashcards.accuracy)}%`
-                      : "N/A"}
+                    {data.flashcards.known}
                   </p>
                   <p className="text-sm text-gray-500 mt-2">
                     {data.flashcards.known > 0 
-                      ? `${data.flashcards.known} mastered`
+                      ? "cards mastered"
                       : "No mastered cards"}
                   </p>
                 </div>
