@@ -40,7 +40,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { User } from "@/models/User";
-import { getUserIdFromRequest } from "@/lib/auth";
+import { getUserIdFromRequest, getLoginMethodFromRequest } from "@/lib/auth";
 
 // Force dynamic rendering since we use request.headers for authentication
 // This is required for Next.js to properly handle cookies and headers in serverless environments
@@ -90,6 +90,11 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Get the login method from the JWT token
+    // This tells us how the user logged in for THIS session (local, google, or github)
+    // This is more accurate than user.provider which may have been overwritten
+    const loginMethod = getLoginMethodFromRequest(request);
+
     // Return user data (excluding password)
     // Includes all information needed by frontend for user interface
     return NextResponse.json({
@@ -98,7 +103,7 @@ export async function GET(request: NextRequest) {
         email: user.email,
         name: user.name,
         role: user.role,
-        provider: user.provider || "local", // Default to "local" if not set
+        provider: loginMethod || user.provider || "local", // Use loginMethod from token (current session)
         picture: user.picture, // OAuth provider profile picture (if available)
         avatar: user.avatar, // S3 key for user-uploaded avatar
         avatarUrl: avatarUrl, // Signed URL for avatar (temporary access)
