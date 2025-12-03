@@ -127,6 +127,52 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const pollDocumentStatus = useCallback(
+    async (documentId: string) => {
+      try {
+        const response = await fetch(`/api/documents/${documentId}`, {
+          credentials: "include", // Include cookies for authentication
+        });
+        if (response.ok) {
+          const payload = await response.json();
+          const status: string | undefined = payload.document?.status;
+
+          if (status === "completed") {
+            setProcessingStatus("");
+            setPendingDocumentId(null);
+            clearPolling();
+            void fetchDocuments();
+            router.push(`/documents/${documentId}`);
+            return;
+          }
+
+          if (status === "failed") {
+            setProcessingStatus("");
+            setPendingDocumentId(null);
+            clearPolling();
+            setError("Document processing failed. Please try again.");
+            void fetchDocuments();
+            return;
+          }
+
+          setProcessingStatus(
+            "Processing your document. We’ll open the study workspace as soon as it’s ready."
+          );
+        } else {
+          console.error("Failed to poll document status.");
+        }
+      } catch (error) {
+        console.error("Error polling document status:", error);
+      }
+
+      clearPolling();
+      pollingTimeoutRef.current = setTimeout(() => {
+        void pollDocumentStatus(documentId);
+      }, 5000);
+    },
+    [clearPolling, fetchDocuments, router]
+  );
+
   // YouTube validation function
   const validateYouTubeUrl = useCallback(async (url: string) => {
     if (!url.trim()) {
@@ -223,52 +269,6 @@ export default function DashboardPage() {
 
     return () => clearTimeout(timer);
   }, [youtubeUrl, validateYouTubeUrl]);
-
-  const pollDocumentStatus = useCallback(
-    async (documentId: string) => {
-      try {
-        const response = await fetch(`/api/documents/${documentId}`, {
-          credentials: "include", // Include cookies for authentication
-        });
-        if (response.ok) {
-          const payload = await response.json();
-          const status: string | undefined = payload.document?.status;
-
-          if (status === "completed") {
-            setProcessingStatus("");
-            setPendingDocumentId(null);
-            clearPolling();
-            void fetchDocuments();
-            router.push(`/documents/${documentId}`);
-            return;
-          }
-
-          if (status === "failed") {
-            setProcessingStatus("");
-            setPendingDocumentId(null);
-            clearPolling();
-            setError("Document processing failed. Please try again.");
-            void fetchDocuments();
-            return;
-          }
-
-          setProcessingStatus(
-            "Processing your document. We’ll open the study workspace as soon as it’s ready."
-          );
-        } else {
-          console.error("Failed to poll document status.");
-        }
-      } catch (error) {
-        console.error("Error polling document status:", error);
-      }
-
-      clearPolling();
-      pollingTimeoutRef.current = setTimeout(() => {
-        void pollDocumentStatus(documentId);
-      }, 5000);
-    },
-    [clearPolling, fetchDocuments, router]
-  );
 
   useEffect(() => {
     // Wait for auth check to complete before redirecting
