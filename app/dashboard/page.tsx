@@ -1236,12 +1236,12 @@ export default function DashboardPage() {
 
       {/* YouTube Modal */}
       {showYouTubeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-lg mx-4 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 border border-white/20 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="w-full max-w-lg mx-4 rounded-2xl bg-white/10 border border-white/20 shadow-2xl backdrop-blur-xl">
             <div className="flex items-center justify-between p-6 border-b border-white/10">
               <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-red-500/20 p-2.5">
-                  <Youtube className="h-5 w-5 text-red-400" />
+                <div className="rounded-xl bg-white/20 p-2.5">
+                  <Youtube className="h-5 w-5 text-white" />
                 </div>
                 <h2 className="text-xl font-semibold text-white">Add YouTube Video</h2>
               </div>
@@ -1261,7 +1261,7 @@ export default function DashboardPage() {
             <div className="p-6 space-y-5">
               {/* URL Input */}
               <div>
-                <label className="block text-sm font-medium text-white/80 mb-2">
+                <label className="block text-sm font-medium text-white mb-2">
                   YouTube URL *
                 </label>
                 <input
@@ -1269,29 +1269,29 @@ export default function DashboardPage() {
                   value={youtubeUrl}
                   onChange={(e) => setYoutubeUrl(e.target.value)}
                   placeholder="https://www.youtube.com/watch?v=..."
-                  className="w-full rounded-lg border border-white/20 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-white/10"
+                  className="w-full rounded-lg border border-white/30 bg-white/10 px-4 py-3 text-white placeholder:text-white/50 focus:border-white/50 focus:outline-none focus:ring-2 focus:ring-white/20 backdrop-blur-xl"
                 />
               </div>
 
               {/* Loading State */}
               {youtubeValidating && (
-                <div className="flex items-center gap-3 p-4 rounded-lg bg-white/5 border border-white/10">
-                  <div className="animate-spin h-5 w-5 border-2 border-white/20 border-t-white rounded-full" />
-                  <span className="text-white/80">Validating video...</span>
+                <div className="flex items-center gap-3 p-4 rounded-lg bg-white/10 border border-white/20">
+                  <div className="animate-spin h-5 w-5 border-2 border-white/30 border-t-white rounded-full" />
+                  <span className="text-white/90">Validating video...</span>
                 </div>
               )}
 
               {/* Error Message */}
               {youtubeError && (
-                <div className="flex items-start gap-3 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
-                  <AlertTriangle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
-                  <span className="text-red-300">{youtubeError}</span>
+                <div className="flex items-start gap-3 p-4 rounded-lg bg-red-500/20 border border-red-400/30">
+                  <AlertTriangle className="h-5 w-5 text-red-200 shrink-0 mt-0.5" />
+                  <span className="text-red-100">{youtubeError}</span>
                 </div>
               )}
 
               {/* Video Preview */}
               {youtubeVideoInfo && !youtubeValidating && (
-                <div className="rounded-lg bg-white/5 border border-white/10 overflow-hidden">
+                <div className="rounded-lg bg-white/10 border border-white/20 overflow-hidden">
                   <div className="flex gap-4 p-4">
                     {youtubeVideoInfo.thumbnail && (
                       <div className="shrink-0">
@@ -1307,19 +1307,19 @@ export default function DashboardPage() {
                     )}
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium text-white line-clamp-2">{youtubeVideoInfo.title}</h3>
-                      <p className="text-sm text-white/60 mt-1">{youtubeVideoInfo.channelTitle}</p>
+                      <p className="text-sm text-white/70 mt-1">{youtubeVideoInfo.channelTitle}</p>
                       <div className="flex items-center gap-3 mt-2">
-                        <span className="flex items-center gap-1 text-sm text-white/60">
+                        <span className="flex items-center gap-1 text-sm text-white/70">
                           <Clock className="h-4 w-4" />
                           {youtubeVideoInfo.durationFormatted}
                         </span>
                         {youtubeVideoInfo.isEducational ? (
-                          <span className="flex items-center gap-1 text-sm text-green-400">
+                          <span className="flex items-center gap-1 text-sm text-emerald-300">
                             <CheckCircle className="h-4 w-4" />
                             Educational
                           </span>
                         ) : (
-                          <span className="flex items-center gap-1 text-sm text-yellow-400">
+                          <span className="flex items-center gap-1 text-sm text-yellow-300">
                             <AlertTriangle className="h-4 w-4" />
                             May not be educational
                           </span>
@@ -1331,9 +1331,9 @@ export default function DashboardPage() {
                   {/* Educational Warning */}
                   {!youtubeVideoInfo.isEducational && (
                     <div className="px-4 pb-4">
-                      <div className="flex items-start gap-2 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
-                        <AlertTriangle className="h-4 w-4 text-yellow-400 shrink-0 mt-0.5" />
-                        <p className="text-sm text-yellow-300">
+                      <div className="flex items-start gap-2 p-3 rounded-lg bg-yellow-500/20 border border-yellow-400/30">
+                        <AlertTriangle className="h-4 w-4 text-yellow-300 shrink-0 mt-0.5" />
+                        <p className="text-sm text-yellow-200">
                           This video may not be educational content. Study materials quality may be limited.
                         </p>
                       </div>
@@ -1343,15 +1343,15 @@ export default function DashboardPage() {
               )}
 
               {/* Usage Limits Info */}
-              <div className="rounded-lg bg-white/5 border border-white/10 p-4">
-                <h4 className="text-sm font-medium text-white/80 mb-2">📋 Usage Limits</h4>
-                <ul className="space-y-1 text-sm text-white/60">
+              <div className="rounded-lg bg-white/10 border border-white/20 p-4">
+                <h4 className="text-sm font-medium text-white mb-2">📋 Usage Limits</h4>
+                <ul className="space-y-1 text-sm text-white/80">
                   <li>• 3 videos per day per user</li>
                   <li>• Maximum video length: 60 minutes</li>
                   <li>• Recommended: Educational lectures & tutorials</li>
                 </ul>
                 {youtubeVideoInfo && (
-                  <p className="mt-3 text-sm font-medium text-indigo-400">
+                  <p className="mt-3 text-sm font-medium text-emerald-300">
                     ⏱️ You have {youtubeVideoInfo.remaining} remaining today
                   </p>
                 )}
@@ -1367,18 +1367,18 @@ export default function DashboardPage() {
                   setYoutubeVideoInfo(null);
                   setYoutubeError("");
                 }}
-                className="rounded-lg border border-white/20 bg-transparent px-5 py-2.5 text-white hover:bg-white/10"
+                className="rounded-lg border border-white/25 bg-white/10 px-5 py-2.5 text-white hover:bg-white/20"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleYouTubeSubmit}
                 disabled={!youtubeVideoInfo || youtubeSubmitting || youtubeValidating}
-                className="rounded-lg bg-red-500 px-5 py-2.5 text-white hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="rounded-lg border border-white/25 bg-white/20 px-5 py-2.5 text-white hover:bg-white/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {youtubeSubmitting ? (
                   <>
-                    <div className="animate-spin h-4 w-4 border-2 border-white/20 border-t-white rounded-full" />
+                    <div className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full" />
                     Adding...
                   </>
                 ) : (
