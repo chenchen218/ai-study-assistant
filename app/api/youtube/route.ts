@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
     console.log(`📹 YouTube document created: ${documentId} for video: ${title}`);
 
     // Start AI processing in background (don't await)
-    processYouTubeVideo(documentId, url, title).catch(error => {
+    processYouTubeVideo(documentId, userId, url, title).catch(error => {
       console.error(`❌ YouTube processing failed for ${documentId}:`, error);
     });
 
@@ -157,7 +157,8 @@ export async function POST(request: NextRequest) {
  * Background function to process YouTube video with AI
  */
 async function processYouTubeVideo(
-  documentId: string, 
+  documentId: string,
+  userId: string,
   youtubeUrl: string,
   title: string
 ): Promise<void> {
@@ -200,9 +201,10 @@ async function processYouTubeVideo(
         documentId: new mongoose.Types.ObjectId(documentId) 
       });
       
-      // Create new flashcards
+      // Create new flashcards (with userId)
       const flashcardDocs = content.flashcards.map((fc: any) => ({
         documentId: new mongoose.Types.ObjectId(documentId),
+        userId: new mongoose.Types.ObjectId(userId),
         question: fc.question,
         answer: fc.answer
       }));
@@ -218,9 +220,10 @@ async function processYouTubeVideo(
         documentId: new mongoose.Types.ObjectId(documentId) 
       });
       
-      // Create new questions
+      // Create new questions (with userId)
       const quizDocs = content.quiz.map((q: any) => ({
         documentId: new mongoose.Types.ObjectId(documentId),
+        userId: new mongoose.Types.ObjectId(userId),
         question: q.question,
         options: q.options,
         correctAnswer: q.correctAnswer,
