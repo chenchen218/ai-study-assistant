@@ -121,18 +121,19 @@ export async function POST(request: NextRequest) {
       status: "processing"
     });
 
-    console.log(`📹 YouTube document created: ${document._id} for video: ${title}`);
+    const documentId = String(document._id);
+    console.log(`📹 YouTube document created: ${documentId} for video: ${title}`);
 
     // Start AI processing in background (don't await)
-    processYouTubeVideo(document._id.toString(), url, title).catch(error => {
-      console.error(`❌ YouTube processing failed for ${document._id}:`, error);
+    processYouTubeVideo(documentId, url, title).catch(error => {
+      console.error(`❌ YouTube processing failed for ${documentId}:`, error);
     });
 
     return NextResponse.json({
       success: true,
       message: "YouTube video added successfully. Processing will begin shortly.",
       document: {
-        id: document._id,
+        id: documentId,
         fileName: document.fileName,
         fileType: document.fileType,
         youtubeUrl: document.youtubeUrl,

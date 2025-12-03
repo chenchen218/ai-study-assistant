@@ -55,6 +55,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { Document } from "@/models/Document";
+import { Note } from "@/models/Note";
 import { getFileFromS3 } from "@/lib/s3";
 import { answerQuestion } from "@/lib/ai";
 import pdfParse from "pdf-parse";
@@ -112,20 +113,27 @@ export async function POST(request: NextRequest) {
     }
 
     let truncatedText = "";
+    const maxLength = 10000;
 
-    // Handle YouTube documents differently
-    // For YouTube videos, we use the video URL directly with the AI model
+    // Handle YouTube documents: use saved notes for better Q&A accuracy
+    // This provides actual content context instead of just the video URL
     if (document.fileType === "youtube") {
-      if (!document.youtubeUrl) {
+      // Get the saved notes for this document
+      const notes = await Note.findOne({ documentId: document._id });
+      
+      if (!notes || !notes.content) {
         return NextResponse.json(
-          { error: "YouTube URL not found for this document" },
+          { error: "Notes not found for this YouTube video. Please wait for processing to complete." },
           { status: 400 }
         );
       }
-      
-      // For YouTube Q&A, we pass a context that includes the video reference
-      // The AI will use its knowledge of the video to answer questions
-      truncatedText = `This question is about a YouTube video titled "${document.fileName}". Video URL: ${document.youtubeUrl}. Please answer the following question based on this video content.`;
+
+      // Use the saved notes content for Q&A
+      // This provides much better context than just the video URL
+      const notesContent = notes.content;
+      truncatedText = notesContent.length > maxLength 
+        ? notesContent.substring(0, maxLength) + "..." 
+        : notesContent;
     } else {
       // For PDF/DOCX: Retrieve file from S3 storage and extract text
       // We need the original document text to answer questions accurately
@@ -160,11 +168,9 @@ export async function POST(request: NextRequest) {
       }
 
       // Truncate text to 10,000 characters for AI processing
-      const maxLength = 10000;
-      truncatedText =
-        extractedText.length > maxLength
-          ? extractedText.substring(0, maxLength) + "..."
-          : extractedText;
+      truncatedText = extractedText.length > maxLength
+        ? extractedText.substring(0, maxLength) + "..."
+        : extractedText;
     }
 
     // Generate answer using AI
