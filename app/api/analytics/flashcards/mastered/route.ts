@@ -2,7 +2,7 @@
  * Mastered Flashcards API Route
  * 
  * This endpoint manages flashcard mastery records:
- * - GET: Retrieve list of mastered flashcards with details
+ * - GET: Retrieve list of mastered flashcards grouped by document
  * - DELETE: Remove a flashcard mastery record (user forgot the card)
  * 
  * @route GET /api/analytics/flashcards/mastered
@@ -22,12 +22,9 @@ import { Document as DocumentModel } from "@/models/Document";
 export const dynamic = 'force-dynamic';
 
 /**
- * GET: Retrieve list of mastered flashcards with details
+ * GET: Retrieve list of mastered flashcards grouped by document
  * 
- * Returns all flashcards the user has marked as "known" with:
- * - Flashcard question and answer
- * - Document name it belongs to
- * - When it was mastered
+ * Returns flashcards grouped by their parent document, similar to Error Book
  */
 export async function GET(request: NextRequest) {
   try {
@@ -42,10 +39,10 @@ export async function GET(request: NextRequest) {
     const masteredPerformances = await FlashcardPerformance.find({
       userId: new mongoose.Types.ObjectId(userId),
       isKnown: true,
-    }).sort({ reviewedAt: -1 });
+    }).sort({ reviewedAt: -1 }).lean();
 
     // Get unique flashcard IDs
-    const flashcardIds = [...new Set(masteredPerformances.map(p => p.flashcardId.toString()))];
+    const flashcardIds = [...new Set(masteredPerformances.map(p => String(p.flashcardId)))];
 
     // Fetch flashcard details
     const flashcards = await Flashcard.find({
@@ -72,37 +69,68 @@ export async function GET(request: NextRequest) {
       documentMap.set(String(d._id), d);
     }
 
-    // Build response with flashcard details
-    // Group by flashcard to avoid duplicates (user might have marked same card multiple times)
-    const masteredFlashcardsMap = new Map();
+    // Group flashcards by document
+    const groupedByDocument: Record<string, {
+      document: {
+        id: string;
+        fileName: string;
+        fileType: string;
+      };
+      flashcards: Array<{
+        performanceId: string;
+        flashcardId: string;
+        question: string;
+        answer: string;
+        masteredAt: string;
+      }>;
+    }> = {};
+
+    // Track which flashcards we've already added (to avoid duplicates)
+    const addedFlashcards = new Set<string>();
 
     for (const performance of masteredPerformances) {
-      const flashcardId = performance.flashcardId.toString();
+      const flashcardId = String(performance.flashcardId);
       
-      // Skip if we already have this flashcard (keep the most recent one)
-      if (masteredFlashcardsMap.has(flashcardId)) continue;
+      // Skip if we already have this flashcard
+      if (addedFlashcards.has(flashcardId)) continue;
+      addedFlashcards.add(flashcardId);
 
       const flashcard = flashcardMap.get(flashcardId);
       if (!flashcard) continue; // Flashcard might have been deleted
 
-      const document = documentMap.get(String(flashcard.documentId));
+      const documentId = String(flashcard.documentId);
+      const document = documentMap.get(documentId);
 
-      masteredFlashcardsMap.set(flashcardId, {
+      if (!groupedByDocument[documentId]) {
+        groupedByDocument[documentId] = {
+          document: {
+            id: documentId,
+            fileName: document?.fileName || "[Document Deleted]",
+            fileType: document?.fileType || "unknown",
+          },
+          flashcards: [],
+        };
+      }
+
+      groupedByDocument[documentId].flashcards.push({
         performanceId: String(performance._id),
         flashcardId: flashcardId,
         question: flashcard.question,
         answer: flashcard.answer,
-        documentId: String(flashcard.documentId),
-        documentName: document?.fileName || "Unknown Document",
-        masteredAt: performance.reviewedAt,
+        masteredAt: performance.reviewedAt ? new Date(performance.reviewedAt).toISOString() : new Date().toISOString(),
       });
     }
 
-    const masteredFlashcards = Array.from(masteredFlashcardsMap.values());
+    // Convert to array and sort by document name
+    const result = Object.values(groupedByDocument).sort((a, b) => 
+      a.document.fileName.localeCompare(b.document.fileName)
+    );
 
     return NextResponse.json({
-      total: masteredFlashcards.length,
-      flashcards: masteredFlashcards,
+      success: true,
+      documents: result,
+      totalDocuments: result.length,
+      totalFlashcards: addedFlashcards.size,
     });
   } catch (error: any) {
     console.error("Get mastered flashcards error:", error);
@@ -115,11 +143,6 @@ export async function GET(request: NextRequest) {
 
 /**
  * DELETE: Remove a flashcard mastery record
- * 
- * When a user feels they've forgotten a flashcard, they can remove it from
- * their mastered list so it will be counted as "not known" again.
- * 
- * @body performanceId - ID of the FlashcardPerformance record to delete
  */
 export async function DELETE(request: NextRequest) {
   try {
@@ -176,4 +199,3 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
-
