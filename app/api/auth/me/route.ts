@@ -69,6 +69,27 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    // Generate signed URL for avatar if user has uploaded one
+    // This provides temporary access to the S3-stored avatar image
+    let avatarUrl = null;
+    if (user.avatar) {
+      try {
+        const AWS = await import("aws-sdk");
+        const s3Client = new AWS.default.S3({
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+          region: process.env.AWS_REGION || "us-east-1",
+        });
+        avatarUrl = s3Client.getSignedUrl("getObject", {
+          Bucket: process.env.AWS_S3_BUCKET_NAME || "ai-study-assistant-documents",
+          Key: user.avatar,
+          Expires: 3600 * 24 * 7, // 7 days
+        });
+      } catch (error) {
+        console.error("Error generating avatar URL:", error);
+      }
+    }
+
     // Return user data (excluding password)
     // Includes all information needed by frontend for user interface
     return NextResponse.json({
@@ -79,6 +100,8 @@ export async function GET(request: NextRequest) {
         role: user.role,
         provider: user.provider || "local", // Default to "local" if not set
         picture: user.picture, // OAuth provider profile picture (if available)
+        avatar: user.avatar, // S3 key for user-uploaded avatar
+        avatarUrl: avatarUrl, // Signed URL for avatar (temporary access)
         createdAt: user.createdAt,
       },
     });
