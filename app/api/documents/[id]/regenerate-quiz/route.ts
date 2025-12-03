@@ -3,7 +3,7 @@ import connectDB from "@/lib/db";
 import { Document } from "@/models/Document";
 import { QuizQuestion } from "@/models/QuizQuestion";
 import { getFileFromS3 } from "@/lib/s3";
-import { generateQuizQuestions } from "@/lib/ai";
+import { generateQuizQuestions, generateYouTubeContent } from "@/lib/ai";
 import { getUserIdFromRequest } from "@/lib/auth";
 import pdfParse from "pdf-parse";
 import mammoth from "mammoth";
@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 
 /**
  * POST /api/documents/[id]/regenerate-quiz
- * Regenerates quiz questions for a document
+ * Regenerates quiz questions for a document (supports PDF, DOCX, and YouTube)
  */
 export async function POST(
   request: NextRequest,
@@ -48,7 +48,79 @@ export async function POST(
       );
     }
 
-    // Get file from S3 and extract text
+    let truncatedText = "";
+
+    // Handle YouTube videos differently
+    if (document.fileType === "youtube") {
+      if (!document.youtubeUrl) {
+        return NextResponse.json(
+          { error: "YouTube URL not found for this document" },
+          { status: 400 }
+        );
+      }
+
+      // Get existing quiz questions before deleting (to avoid duplicates)
+      const existingQuestions = await QuizQuestion.find({
+        documentId: document._id,
+        userId,
+      }).select("question");
+
+      // Delete existing quiz questions
+      await QuizQuestion.deleteMany({ documentId: document._id, userId });
+
+      // Generate new content from YouTube (we only need quiz)
+      const previousQuestionsText = existingQuestions.length > 0
+        ? existingQuestions.map((q, i) => `${i + 1}. ${q.question}`).join("\n")
+        : null;
+
+      // For YouTube, we regenerate all content and extract quiz
+      const content = await generateYouTubeContent(document.youtubeUrl, document.fileName);
+      
+      if (content.quiz && content.quiz.length > 0) {
+        await QuizQuestion.insertMany(
+          content.quiz.map((q) => ({
+            documentId: document._id,
+            userId,
+            question: q.question,
+            options: q.options,
+            correctAnswer: q.correctAnswer,
+            explanation: q.explanation,
+          }))
+        );
+        console.log(`✅ Regenerated ${content.quiz.length} quiz questions for YouTube document ${document._id}`);
+      } else {
+        return NextResponse.json(
+          { error: "Failed to generate quiz questions from YouTube video. Please try again." },
+          { status: 500 }
+        );
+      }
+
+      // Fetch the new quiz questions
+      const newQuizQuestions = await QuizQuestion.find({
+        documentId: document._id,
+        userId,
+      }).sort({ createdAt: -1 });
+
+      return NextResponse.json({
+        success: true,
+        quizQuestions: newQuizQuestions.map((qq) => ({
+          id: qq._id,
+          question: qq.question,
+          options: qq.options,
+          correctAnswer: qq.correctAnswer,
+          explanation: qq.explanation,
+        })),
+      });
+    }
+
+    // For PDF/DOCX: Get file from S3 and extract text
+    if (!document.s3Key) {
+      return NextResponse.json(
+        { error: "Document file not found" },
+        { status: 400 }
+      );
+    }
+
     const fileBuffer = await getFileFromS3(document.s3Key);
     let extractedText = "";
 
@@ -69,7 +141,7 @@ export async function POST(
 
     // Limit text length for AI processing
     const maxLength = 10000;
-    const truncatedText =
+    truncatedText =
       extractedText.length > maxLength
         ? extractedText.substring(0, maxLength) + "..."
         : extractedText;

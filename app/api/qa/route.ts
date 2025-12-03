@@ -111,42 +111,61 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Retrieve file from S3 storage and extract text
-    // We need the original document text to answer questions accurately
-    // This is done on-demand rather than caching to ensure we always use the latest version
-    // Text extraction is necessary because we need the full document content for context
-    const fileBuffer = await getFileFromS3(document.s3Key);
-    let extractedText = "";
+    let truncatedText = "";
 
-    // Extract text based on file type
-    // PDF: Use pdf-parse library to extract text content
-    // DOCX: Use mammoth library to extract raw text (no formatting)
-    if (document.fileType === "pdf") {
-      const pdfData = await pdfParse(fileBuffer);
-      extractedText = pdfData.text;
-    } else if (document.fileType === "docx") {
-      const result = await mammoth.extractRawText({ buffer: fileBuffer });
-      extractedText = result.value;
+    // Handle YouTube documents differently
+    // For YouTube videos, we use the video URL directly with the AI model
+    if (document.fileType === "youtube") {
+      if (!document.youtubeUrl) {
+        return NextResponse.json(
+          { error: "YouTube URL not found for this document" },
+          { status: 400 }
+        );
+      }
+      
+      // For YouTube Q&A, we pass a context that includes the video reference
+      // The AI will use its knowledge of the video to answer questions
+      truncatedText = `This question is about a YouTube video titled "${document.fileName}". Video URL: ${document.youtubeUrl}. Please answer the following question based on this video content.`;
+    } else {
+      // For PDF/DOCX: Retrieve file from S3 storage and extract text
+      // We need the original document text to answer questions accurately
+      if (!document.s3Key) {
+        return NextResponse.json(
+          { error: "Document file not found" },
+          { status: 400 }
+        );
+      }
+
+      const fileBuffer = await getFileFromS3(document.s3Key);
+      let extractedText = "";
+
+      // Extract text based on file type
+      // PDF: Use pdf-parse library to extract text content
+      // DOCX: Use mammoth library to extract raw text (no formatting)
+      if (document.fileType === "pdf") {
+        const pdfData = await pdfParse(fileBuffer);
+        extractedText = pdfData.text;
+      } else if (document.fileType === "docx") {
+        const result = await mammoth.extractRawText({ buffer: fileBuffer });
+        extractedText = result.value;
+      }
+
+      // Validate that text extraction was successful
+      // Some files may be corrupted, password-protected, or contain only images
+      if (!extractedText || extractedText.trim().length === 0) {
+        return NextResponse.json(
+          { error: "Could not extract text from document" },
+          { status: 400 }
+        );
+      }
+
+      // Truncate text to 10,000 characters for AI processing
+      const maxLength = 10000;
+      truncatedText =
+        extractedText.length > maxLength
+          ? extractedText.substring(0, maxLength) + "..."
+          : extractedText;
     }
-
-    // Validate that text extraction was successful
-    // Some files may be corrupted, password-protected, or contain only images
-    if (!extractedText || extractedText.trim().length === 0) {
-      return NextResponse.json(
-        { error: "Could not extract text from document" },
-        { status: 400 }
-      );
-    }
-
-    // Truncate text to 10,000 characters for AI processing
-    // This ensures consistent processing times and cost control
-    // AI models have token limits, and very long documents can exceed these
-    // We take the first 10,000 characters which usually contains the most important content
-    const maxLength = 10000;
-    const truncatedText =
-      extractedText.length > maxLength
-        ? extractedText.substring(0, maxLength) + "..."
-        : extractedText;
 
     // Generate answer using AI
     // The AI model analyzes the document content and question to provide
