@@ -83,7 +83,8 @@ export async function GET(request: NextRequest) {
         });
 
         avatarUrl = s3Client.getSignedUrl("getObject", {
-          Bucket: process.env.AWS_S3_BUCKET_NAME || "ai-study-assistant-documents",
+          Bucket:
+            process.env.AWS_S3_BUCKET_NAME || "ai-study-assistant-documents",
           Key: user.avatar,
           Expires: 3600 * 24 * 7, // 7 days
         });
