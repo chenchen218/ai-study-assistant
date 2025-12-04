@@ -25,7 +25,7 @@ const UserSchema: Schema = new Schema(
     },
     password: {
       type: String,
-      required: function(this: IUser) {
+      required: function (this: IUser) {
         return this.provider === "local";
       },
     },
@@ -65,6 +65,14 @@ const UserSchema: Schema = new Schema(
     timestamps: true,
   }
 );
+
+// Indexes for performance optimization
+// email already has unique index from schema definition
+// googleId and githubId already have unique sparse indexes from schema definition
+// Additional indexes for common queries
+UserSchema.index({ provider: 1 }); // For filtering by provider
+UserSchema.index({ role: 1 }); // For admin queries
+UserSchema.index({ createdAt: -1 }); // For sorting by creation date
 
 export const User: Model<IUser> =
   mongoose.models.User || mongoose.model<IUser>("User", UserSchema);

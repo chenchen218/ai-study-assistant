@@ -49,6 +49,11 @@ const QuizQuestionSchema: Schema = new Schema(
   }
 );
 
+// Indexes for performance optimization
+QuizQuestionSchema.index({ documentId: 1 }); // For: find({ documentId })
+QuizQuestionSchema.index({ userId: 1 }); // For user-specific queries
+QuizQuestionSchema.index({ documentId: 1, userId: 1 }); // Compound index for common queries
+
 export const QuizQuestion: Model<IQuizQuestion> =
   mongoose.models.QuizQuestion ||
   mongoose.model<IQuizQuestion>("QuizQuestion", QuizQuestionSchema);

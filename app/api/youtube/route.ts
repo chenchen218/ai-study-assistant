@@ -1,9 +1,9 @@
 /**
  * YouTube Video Submission API Route
- * 
+ *
  * Creates a document record for a YouTube video and triggers AI analysis.
  * The video content will be analyzed by Gemini to generate study materials.
- * 
+ *
  * @route POST /api/youtube
  * @access Protected (requires authentication)
  */
@@ -29,13 +29,13 @@ const MAX_DURATION_SECONDS = 60 * 60; // 60 minutes
 async function getTodayUsageCount(userId: string): Promise<number> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   const count = await Document.countDocuments({
     userId: new mongoose.Types.ObjectId(userId),
     fileType: "youtube",
-    createdAt: { $gte: today }
+    createdAt: { $gte: today },
   });
-  
+
   return count;
 }
 
@@ -50,14 +50,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Get video details from request body
-    const { 
-      videoId, 
+    const {
+      videoId,
       url,
-      title, 
-      thumbnail, 
+      title,
+      thumbnail,
       duration,
       categoryId,
-      isEducational 
+      isEducational,
     } = await request.json();
 
     // Validate required fields
@@ -72,9 +72,9 @@ export async function POST(request: NextRequest) {
     const todayCount = await getTodayUsageCount(userId);
     if (todayCount >= DAILY_LIMIT) {
       return NextResponse.json(
-        { 
+        {
           error: "Daily limit reached",
-          message: `You have used all ${DAILY_LIMIT} YouTube videos for today.`
+          message: `You have used all ${DAILY_LIMIT} YouTube videos for today.`,
         },
         { status: 429 }
       );
@@ -91,15 +91,15 @@ export async function POST(request: NextRequest) {
     // Check if this video was already added by this user
     const existingDoc = await Document.findOne({
       userId: new mongoose.Types.ObjectId(userId),
-      youtubeVideoId: videoId
+      youtubeVideoId: videoId,
     });
 
     if (existingDoc) {
       return NextResponse.json(
-        { 
+        {
           error: "Video already added",
           message: "You have already added this YouTube video.",
-          documentId: existingDoc._id
+          documentId: existingDoc._id,
         },
         { status: 409 }
       );
@@ -118,20 +118,23 @@ export async function POST(request: NextRequest) {
       videoDuration: duration,
       youtubeCategory: categoryId,
       isEducational: isEducational !== false, // Default to true
-      status: "processing"
+      status: "processing",
     });
 
     const documentId = String(document._id);
-    console.log(`📹 YouTube document created: ${documentId} for video: ${title}`);
+    console.log(
+      `📹 YouTube document created: ${documentId} for video: ${title}`
+    );
 
     // Start AI processing in background (don't await)
-    processYouTubeVideo(documentId, userId, url, title).catch(error => {
+    processYouTubeVideo(documentId, userId, url, title).catch((error) => {
       console.error(`❌ YouTube processing failed for ${documentId}:`, error);
     });
 
     return NextResponse.json({
       success: true,
-      message: "YouTube video added successfully. Processing will begin shortly.",
+      message:
+        "YouTube video added successfully. Processing will begin shortly.",
       document: {
         id: documentId,
         fileName: document.fileName,
@@ -139,11 +142,10 @@ export async function POST(request: NextRequest) {
         youtubeUrl: document.youtubeUrl,
         youtubeThumbnail: document.youtubeThumbnail,
         videoDuration: document.videoDuration,
-        status: document.status
+        status: document.status,
       },
-      remaining: DAILY_LIMIT - todayCount - 1
+      remaining: DAILY_LIMIT - todayCount - 1,
     });
-
   } catch (error: any) {
     console.error("YouTube submission error:", error);
     return NextResponse.json(
@@ -164,17 +166,22 @@ async function processYouTubeVideo(
 ): Promise<void> {
   try {
     console.log(`🎬 Starting YouTube AI processing for: ${title}`);
-    
+
     // Generate content using Gemini
-    const content = await generateYouTubeContent(youtubeUrl, title);
-    
+    const content = await generateYouTubeContent(
+      youtubeUrl,
+      title,
+      userId,
+      documentId
+    );
+
     // Save summary
     if (content.summary) {
       await Summary.findOneAndUpdate(
         { documentId: new mongoose.Types.ObjectId(documentId) },
-        { 
+        {
           documentId: new mongoose.Types.ObjectId(documentId),
-          content: content.summary 
+          content: content.summary,
         },
         { upsert: true, new: true }
       );
@@ -185,9 +192,9 @@ async function processYouTubeVideo(
     if (content.notes) {
       await Note.findOneAndUpdate(
         { documentId: new mongoose.Types.ObjectId(documentId) },
-        { 
+        {
           documentId: new mongoose.Types.ObjectId(documentId),
-          content: content.notes 
+          content: content.notes,
         },
         { upsert: true, new: true }
       );
@@ -197,29 +204,31 @@ async function processYouTubeVideo(
     // Save flashcards
     if (content.flashcards && content.flashcards.length > 0) {
       // Delete existing flashcards
-      await Flashcard.deleteMany({ 
-        documentId: new mongoose.Types.ObjectId(documentId) 
+      await Flashcard.deleteMany({
+        documentId: new mongoose.Types.ObjectId(documentId),
       });
-      
+
       // Create new flashcards (with userId)
       const flashcardDocs = content.flashcards.map((fc: any) => ({
         documentId: new mongoose.Types.ObjectId(documentId),
         userId: new mongoose.Types.ObjectId(userId),
         question: fc.question,
-        answer: fc.answer
+        answer: fc.answer,
       }));
-      
+
       await Flashcard.insertMany(flashcardDocs);
-      console.log(`✅ ${flashcardDocs.length} flashcards saved for YouTube video: ${documentId}`);
+      console.log(
+        `✅ ${flashcardDocs.length} flashcards saved for YouTube video: ${documentId}`
+      );
     }
 
     // Save quiz questions
     if (content.quiz && content.quiz.length > 0) {
       // Delete existing questions
-      await QuizQuestion.deleteMany({ 
-        documentId: new mongoose.Types.ObjectId(documentId) 
+      await QuizQuestion.deleteMany({
+        documentId: new mongoose.Types.ObjectId(documentId),
       });
-      
+
       // Create new questions (with userId)
       const quizDocs = content.quiz.map((q: any) => ({
         documentId: new mongoose.Types.ObjectId(documentId),
@@ -227,23 +236,23 @@ async function processYouTubeVideo(
         question: q.question,
         options: q.options,
         correctAnswer: q.correctAnswer,
-        explanation: q.explanation
+        explanation: q.explanation,
       }));
-      
+
       await QuizQuestion.insertMany(quizDocs);
-      console.log(`✅ ${quizDocs.length} quiz questions saved for YouTube video: ${documentId}`);
+      console.log(
+        `✅ ${quizDocs.length} quiz questions saved for YouTube video: ${documentId}`
+      );
     }
 
     // Update document status to completed
     await Document.findByIdAndUpdate(documentId, { status: "completed" });
     console.log(`🎉 YouTube video processing completed: ${documentId}`);
-
   } catch (error: any) {
     console.error(`❌ YouTube AI processing error for ${documentId}:`, error);
-    
+
     // Update document status to failed
     await Document.findByIdAndUpdate(documentId, { status: "failed" });
     throw error;
   }
 }
-

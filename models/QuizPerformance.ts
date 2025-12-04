@@ -56,6 +56,17 @@ const QuizPerformanceSchema: Schema = new Schema(
   }
 );
 
+// Indexes for performance optimization
+// Single field indexes
+QuizPerformanceSchema.index({ userId: 1 }); // For user-specific queries
+QuizPerformanceSchema.index({ documentId: 1 }); // For document-specific queries
+QuizPerformanceSchema.index({ quizQuestionId: 1 }); // For question-specific queries
+
+// Compound indexes for common query patterns
+QuizPerformanceSchema.index({ userId: 1, documentId: 1 }); // For: find({ userId, documentId })
+QuizPerformanceSchema.index({ userId: 1, attemptedAt: -1 }); // For: find({ userId }).sort({ attemptedAt: -1 })
+QuizPerformanceSchema.index({ documentId: 1, attemptedAt: -1 }); // For document-specific history
+
 export const QuizPerformance: Model<IQuizPerformance> =
   mongoose.models.QuizPerformance ||
   mongoose.model<IQuizPerformance>("QuizPerformance", QuizPerformanceSchema);

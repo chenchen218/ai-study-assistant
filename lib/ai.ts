@@ -25,6 +25,12 @@
  */
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import {
+  calculateAICost,
+  estimateTokens,
+  logAICost,
+  getTokenUsage,
+} from "./ai-cost";
 
 // Get Gemini API key from environment variables
 // This key is required for all AI features
@@ -116,10 +122,16 @@ const getModel = async (): Promise<any> => {
  * - Suitable for quick review and understanding
  *
  * @param content - The text content to summarize (should be under 10,000 characters)
+ * @param userId - Optional user ID for cost tracking
+ * @param documentId - Optional document ID for cost tracking
  * @returns Promise resolving to the generated summary text
  * @throws {Error} If API key is missing or AI generation fails
  */
-export async function generateSummary(content: string): Promise<string> {
+export async function generateSummary(
+  content: string,
+  userId?: string,
+  documentId?: string
+): Promise<string> {
   // Construct prompt for AI model
   // The prompt instructs the AI to act as an expert summarizer
   // and create a comprehensive, well-structured summary
@@ -166,10 +178,16 @@ ${content}`;
  * - Can be exported to various formats
  *
  * @param content - The text content to create notes from (should be under 10,000 characters)
+ * @param userId - Optional user ID for cost tracking
+ * @param documentId - Optional document ID for cost tracking
  * @returns Promise resolving to markdown-formatted study notes
  * @throws {Error} If API key is missing or AI generation fails
  */
-export async function generateNotes(content: string): Promise<string> {
+export async function generateNotes(
+  content: string,
+  userId?: string,
+  documentId?: string
+): Promise<string> {
   // Construct prompt for AI model
   // The prompt instructs the AI to create detailed, well-organized study notes
   // with markdown formatting for structure
@@ -186,11 +204,33 @@ ${content}`;
     }
     // Get working AI model (with caching and fallback)
     const model = await getModel();
+    const modelName = cachedWorkingModel || "models/gemini-2.5-flash";
+
+    // Estimate input tokens
+    const estimatedInputTokens = estimateTokens(prompt);
+
     // Generate content using AI model
     const result = await model.generateContent(prompt);
     const response = await result.response;
+    const text = response.text() || "";
+
+    // Get token usage and track cost
+    const usage = getTokenUsage(response);
+    const inputTokens = usage.inputTokens || estimatedInputTokens;
+    const outputTokens = usage.outputTokens || estimateTokens(text);
+
+    // Log cost for monitoring
+    logAICost({
+      model: modelName,
+      inputTokens,
+      outputTokens,
+      operation: "generateNotes",
+      userId,
+      documentId,
+    });
+
     // Extract and return generated text
-    return response.text() || "";
+    return text;
   } catch (error: any) {
     // Log error for debugging
     console.error("Error generating notes:", error);
@@ -228,12 +268,16 @@ ${content}`;
  *
  * @param content - The text content to create flashcards from (should be under 10,000 characters)
  * @param count - Number of flashcards to generate (default: 10)
+ * @param userId - Optional user ID for cost tracking
+ * @param documentId - Optional document ID for cost tracking
  * @returns Promise resolving to an array of flashcard objects with question and answer
  * @throws {Error} If API key is missing (returns empty array on parse errors for graceful degradation)
  */
 export async function generateFlashcards(
   content: string,
-  count: number = 10
+  count: number = 10,
+  userId?: string,
+  documentId?: string
 ): Promise<Array<{ question: string; answer: string }>> {
   // Construct prompt for AI model
   // The prompt instructs the AI to create educational flashcards focused on academic content
@@ -271,10 +315,30 @@ ${content}`;
     }
     // Get working AI model (with caching and fallback)
     const model = await getModel();
+    const modelName = cachedWorkingModel || "models/gemini-2.5-flash";
+
+    // Estimate input tokens
+    const estimatedInputTokens = estimateTokens(prompt);
+
     // Generate content using AI model
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
+
+    // Get token usage and track cost
+    const usage = getTokenUsage(response);
+    const inputTokens = usage.inputTokens || estimatedInputTokens;
+    const outputTokens = usage.outputTokens || estimateTokens(text);
+
+    // Log cost for monitoring
+    logAICost({
+      model: modelName,
+      inputTokens,
+      outputTokens,
+      operation: "generateFlashcards",
+      userId,
+      documentId,
+    });
 
     // Extract JSON from response (might be wrapped in markdown code blocks)
     // AI models sometimes wrap JSON in markdown code blocks, so we need to clean it
@@ -325,13 +389,17 @@ ${content}`;
  * @param content - The text content to create questions from (should be under 10,000 characters)
  * @param count - Number of questions to generate (default: 5)
  * @param previousQuestions - Optional text containing previously generated questions to avoid duplicates
+ * @param userId - Optional user ID for cost tracking
+ * @param documentId - Optional document ID for cost tracking
  * @returns Promise resolving to an array of quiz question objects
  * @throws {Error} If API key is missing or AI generation fails (returns empty array on parse errors)
  */
 export async function generateQuizQuestions(
   content: string,
   count: number = 5,
-  previousQuestions?: string | null
+  previousQuestions?: string | null,
+  userId?: string,
+  documentId?: string
 ): Promise<
   Array<{
     question: string;
@@ -387,9 +455,29 @@ ${content}`;
       throw new Error("GEMINI_API_KEY is not configured");
     }
     const model = await getModel();
+    const modelName = cachedWorkingModel || "models/gemini-2.5-flash";
+
+    // Estimate input tokens
+    const estimatedInputTokens = estimateTokens(prompt);
+
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
+
+    // Get token usage and track cost
+    const usage = getTokenUsage(response);
+    const inputTokens = usage.inputTokens || estimatedInputTokens;
+    const outputTokens = usage.outputTokens || estimateTokens(text);
+
+    // Log cost for monitoring
+    logAICost({
+      model: modelName,
+      inputTokens,
+      outputTokens,
+      operation: "generateQuizQuestions",
+      userId,
+      documentId,
+    });
 
     // Extract JSON from response
     let jsonText = text.trim();
@@ -449,13 +537,17 @@ ${content}`;
  * @param question - The flashcard question
  * @param correctAnswer - The correct answer from the flashcard
  * @param userAnswer - The user's input answer to verify
+ * @param userId - Optional user ID for cost tracking
+ * @param documentId - Optional document ID for cost tracking
  * @returns Promise resolving to an object with isCorrect boolean and feedback string
  * @throws {Error} If API key is missing or AI generation fails
  */
 export async function verifyFlashcardAnswer(
   question: string,
   correctAnswer: string,
-  userAnswer: string
+  userAnswer: string,
+  userId?: string,
+  documentId?: string
 ): Promise<{ isCorrect: boolean; feedback: string }> {
   const prompt = `You are an expert at evaluating student answers to academic questions. Your task is to determine if a student's answer is correct based on the expected answer.
 
@@ -494,9 +586,29 @@ IMPORTANT:
       throw new Error("GEMINI_API_KEY is not configured");
     }
     const model = await getModel();
+    const modelName = cachedWorkingModel || "models/gemini-2.5-flash";
+
+    // Estimate input tokens
+    const estimatedInputTokens = estimateTokens(prompt);
+
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text().trim();
+
+    // Get token usage and track cost
+    const usage = getTokenUsage(response);
+    const inputTokens = usage.inputTokens || estimatedInputTokens;
+    const outputTokens = usage.outputTokens || estimateTokens(text);
+
+    // Log cost for monitoring
+    logAICost({
+      model: modelName,
+      inputTokens,
+      outputTokens,
+      operation: "verifyFlashcardAnswer",
+      userId,
+      documentId,
+    });
 
     // Extract JSON from response
     let jsonText = text
@@ -544,12 +656,16 @@ IMPORTANT:
  * Answers a user's question about document content using AI
  * @param content - The document content to use as context
  * @param question - The user's question to answer
+ * @param userId - Optional user ID for cost tracking
+ * @param documentId - Optional document ID for cost tracking
  * @returns Promise resolving to the AI-generated answer
  * @throws {Error} If AI generation fails (returns fallback message)
  */
 export async function answerQuestion(
   content: string,
-  question: string
+  question: string,
+  userId?: string,
+  documentId?: string
 ): Promise<string> {
   const prompt = `You are a helpful study assistant. Answer questions based on the provided content accurately and concisely.
 
@@ -562,11 +678,32 @@ Question: ${question}`;
 
   try {
     const model = await getModel();
+    const modelName = cachedWorkingModel || "models/gemini-2.5-flash";
+
+    // Estimate input tokens
+    const estimatedInputTokens = estimateTokens(prompt);
+
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    return (
-      response.text() || "I apologize, but I could not generate an answer."
-    );
+    const text =
+      response.text() || "I apologize, but I could not generate an answer.";
+
+    // Get token usage and track cost
+    const usage = getTokenUsage(response);
+    const inputTokens = usage.inputTokens || estimatedInputTokens;
+    const outputTokens = usage.outputTokens || estimateTokens(text);
+
+    // Log cost for monitoring
+    logAICost({
+      model: modelName,
+      inputTokens,
+      outputTokens,
+      operation: "answerQuestion",
+      userId,
+      documentId,
+    });
+
+    return text;
   } catch (error) {
     console.error("Error answering question:", error);
     return "I apologize, but I could not generate an answer.";
@@ -599,12 +736,16 @@ export async function extractTextFromContent(content: string): Promise<string> {
  *
  * @param youtubeUrl - The full YouTube video URL
  * @param title - The video title (for context)
+ * @param userId - Optional user ID for cost tracking
+ * @param documentId - Optional document ID for cost tracking
  * @returns Promise resolving to an object containing summary, notes, flashcards, and quiz
  * @throws {Error} If API key is missing or AI generation fails
  */
 export async function generateYouTubeContent(
   youtubeUrl: string,
-  title: string
+  title: string,
+  userId?: string,
+  documentId?: string
 ): Promise<{
   summary: string;
   notes: string;
@@ -674,6 +815,10 @@ Return ONLY the JSON object, no markdown code blocks, no additional text.`;
     }
 
     const model = await getModel();
+    const modelName = cachedWorkingModel || "models/gemini-2.5-flash";
+
+    // Estimate input tokens (video analysis uses more tokens)
+    const estimatedInputTokens = estimateTokens(prompt) + 10000; // Add estimate for video content
 
     // Generate content with the YouTube URL using fileData format
     // Gemini can analyze YouTube videos when passed as fileData
@@ -688,6 +833,21 @@ Return ONLY the JSON object, no markdown code blocks, no additional text.`;
     ]);
     const response = await result.response;
     const text = response.text().trim();
+
+    // Get token usage and track cost
+    const usage = getTokenUsage(response);
+    const inputTokens = usage.inputTokens || estimatedInputTokens;
+    const outputTokens = usage.outputTokens || estimateTokens(text);
+
+    // Log cost for monitoring
+    logAICost({
+      model: modelName,
+      inputTokens,
+      outputTokens,
+      operation: "generateYouTubeContent",
+      userId,
+      documentId,
+    });
 
     // Parse the JSON response with robust error handling
     let jsonText = text

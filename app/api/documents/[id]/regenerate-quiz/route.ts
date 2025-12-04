@@ -10,7 +10,7 @@ import pdfParse from "pdf-parse";
 import mammoth from "mammoth";
 
 // Force dynamic rendering since we use request.headers
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /**
  * POST /api/documents/[id]/regenerate-quiz
@@ -57,10 +57,13 @@ export async function POST(
     if (document.fileType === "youtube") {
       // Get the saved notes for this document
       const notes = await Note.findOne({ documentId: document._id });
-      
+
       if (!notes || !notes.content) {
         return NextResponse.json(
-          { error: "Notes not found for this YouTube video. Please wait for processing to complete." },
+          {
+            error:
+              "Notes not found for this YouTube video. Please wait for processing to complete.",
+          },
           { status: 400 }
         );
       }
@@ -68,9 +71,10 @@ export async function POST(
       // Use the saved notes content to generate quiz questions
       // This is much faster than re-analyzing the video
       const notesContent = notes.content;
-      truncatedText = notesContent.length > maxLength 
-        ? notesContent.substring(0, maxLength) + "..." 
-        : notesContent;
+      truncatedText =
+        notesContent.length > maxLength
+          ? notesContent.substring(0, maxLength) + "..."
+          : notesContent;
     } else {
       // For PDF/DOCX: Get file from S3 and extract text
       if (!document.s3Key) {
@@ -98,9 +102,10 @@ export async function POST(
         );
       }
 
-      truncatedText = extractedText.length > maxLength
-        ? extractedText.substring(0, maxLength) + "..."
-        : extractedText;
+      truncatedText =
+        extractedText.length > maxLength
+          ? extractedText.substring(0, maxLength) + "..."
+          : extractedText;
     }
 
     // Get existing quiz questions before deleting (to avoid duplicates)
@@ -113,11 +118,18 @@ export async function POST(
     await QuizQuestion.deleteMany({ documentId: document._id, userId });
 
     // Generate new quiz questions (5 questions) with previous questions context
-    const previousQuestionsText = existingQuestions.length > 0
-      ? existingQuestions.map((q, i) => `${i + 1}. ${q.question}`).join("\n")
-      : null;
+    const previousQuestionsText =
+      existingQuestions.length > 0
+        ? existingQuestions.map((q, i) => `${i + 1}. ${q.question}`).join("\n")
+        : null;
 
-    const questions = await generateQuizQuestions(truncatedText, 5, previousQuestionsText);
+    const questions = await generateQuizQuestions(
+      truncatedText,
+      5,
+      previousQuestionsText,
+      userId,
+      documentId
+    );
 
     if (questions && questions.length > 0) {
       await QuizQuestion.insertMany(
@@ -137,7 +149,9 @@ export async function POST(
           })
         )
       );
-      console.log(`✅ Regenerated ${questions.length} quiz questions for document ${document._id}`);
+      console.log(
+        `✅ Regenerated ${questions.length} quiz questions for document ${document._id}`
+      );
     } else {
       return NextResponse.json(
         { error: "Failed to generate quiz questions. Please try again." },
@@ -169,4 +183,3 @@ export async function POST(
     );
   }
 }
-

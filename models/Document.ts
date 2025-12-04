@@ -38,20 +38,20 @@ const DocumentSchema: Schema = new Schema(
     },
     fileSize: {
       type: Number,
-      required: function(this: IDocument) {
+      required: function (this: IDocument) {
         return this.fileType !== "youtube";
       },
       default: 0,
     },
     s3Key: {
       type: String,
-      required: function(this: IDocument) {
+      required: function (this: IDocument) {
         return this.fileType !== "youtube";
       },
     },
     s3Url: {
       type: String,
-      required: function(this: IDocument) {
+      required: function (this: IDocument) {
         return this.fileType !== "youtube";
       },
     },
@@ -67,7 +67,7 @@ const DocumentSchema: Schema = new Schema(
     // YouTube-specific fields
     youtubeUrl: {
       type: String,
-      required: function(this: IDocument) {
+      required: function (this: IDocument) {
         return this.fileType === "youtube";
       },
     },
@@ -101,6 +101,16 @@ const DocumentSchema: Schema = new Schema(
     timestamps: true,
   }
 );
+
+// Indexes for performance optimization
+// Single field indexes
+DocumentSchema.index({ userId: 1 }); // For queries: find({ userId })
+DocumentSchema.index({ youtubeVideoId: 1 }); // For duplicate detection
+
+// Compound indexes for common query patterns
+DocumentSchema.index({ userId: 1, createdAt: -1 }); // For: find({ userId }).sort({ createdAt: -1 })
+DocumentSchema.index({ userId: 1, _id: 1 }); // For: findOne({ _id, userId })
+DocumentSchema.index({ folderId: 1 }); // For folder-based queries
 
 export const Document: Model<IDocument> =
   mongoose.models.Document ||

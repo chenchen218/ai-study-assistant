@@ -61,12 +61,14 @@ const WrongAnswerSchema: Schema = new Schema(
 );
 
 // Create index to prevent duplicate wrong answers for the same question
-WrongAnswerSchema.index(
-  { userId: 1, quizQuestionId: 1 },
-  { unique: true }
-);
+WrongAnswerSchema.index({ userId: 1, quizQuestionId: 1 }, { unique: true });
+
+// Additional indexes for performance optimization
+WrongAnswerSchema.index({ userId: 1 }); // For user-specific queries
+WrongAnswerSchema.index({ documentId: 1 }); // For document-specific queries
+WrongAnswerSchema.index({ userId: 1, documentId: 1 }); // For: find({ userId, documentId })
+WrongAnswerSchema.index({ userId: 1, attemptedAt: -1 }); // For sorting by date
 
 export const WrongAnswer: Model<IWrongAnswer> =
   mongoose.models.WrongAnswer ||
   mongoose.model<IWrongAnswer>("WrongAnswer", WrongAnswerSchema);
-

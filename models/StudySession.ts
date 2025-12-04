@@ -45,6 +45,13 @@ const StudySessionSchema: Schema = new Schema(
   }
 );
 
+// Indexes for performance optimization
+StudySessionSchema.index({ userId: 1 }); // For user-specific queries
+StudySessionSchema.index({ documentId: 1 }); // For document-specific queries
+StudySessionSchema.index({ userId: 1, startTime: -1 }); // For: find({ userId }).sort({ startTime: -1 })
+StudySessionSchema.index({ userId: 1, activityType: 1 }); // For activity-based analytics
+StudySessionSchema.index({ userId: 1, startTime: 1 }); // For date range queries
+
 export const StudySession: Model<IStudySession> =
   mongoose.models.StudySession ||
   mongoose.model<IStudySession>("StudySession", StudySessionSchema);

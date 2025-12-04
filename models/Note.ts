@@ -34,5 +34,10 @@ const NoteSchema: Schema = new Schema(
   }
 );
 
+// Indexes for performance optimization
+NoteSchema.index({ documentId: 1 }); // For: findOne({ documentId })
+NoteSchema.index({ userId: 1 }); // For user-specific queries
+NoteSchema.index({ documentId: 1 }, { unique: true }); // One note per document
+
 export const Note: Model<INote> =
   mongoose.models.Note || mongoose.model<INote>("Note", NoteSchema);
