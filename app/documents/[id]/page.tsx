@@ -23,6 +23,8 @@ import {
   Edit,
   Save,
   X,
+  Youtube,
+  ExternalLink,
 } from "lucide-react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -36,7 +38,11 @@ interface DocumentData {
   document: {
     id: string;
     fileName: string;
+    fileType: string;
     status: string;
+    youtubeUrl?: string;
+    youtubeThumbnail?: string;
+    videoDuration?: number;
   };
   summary: {
     id: string;
@@ -780,11 +786,22 @@ export default function DocumentPage() {
                   >
                     <ChevronLeft className="h-5 w-5" />
                   </Button>
-                  <div className="rounded-lg bg-white/20 p-2">
-                    <Upload className="w-5 h-5 text-[#1C1C1C]" />
+                  <div className={`rounded-lg p-2 ${data.document.fileType === 'youtube' ? 'bg-red-500/20' : 'bg-white/20'}`}>
+                    {data.document.fileType === 'youtube' ? (
+                      <Youtube className="w-5 h-5 text-red-500" />
+                    ) : (
+                      <Upload className="w-5 h-5 text-[#1C1C1C]" />
+                    )}
                   </div>
                   <div>
-                    <p className="text-[#1C1C1C]">Currently studying:</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-[#1C1C1C]">Currently studying:</p>
+                      {data.document.fileType === 'youtube' && (
+                        <span className="text-xs bg-red-500/20 text-red-600 px-2 py-0.5 rounded-full font-medium">
+                          YouTube
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-[#1C1C1C]">
                       {data.document.fileName}
                     </p>
@@ -802,6 +819,18 @@ export default function DocumentPage() {
                   >
                     {data.document.status}
                   </span>
+                  {data.document.fileType === 'youtube' && data.document.youtubeUrl && (
+                    <a
+                      href={data.document.youtubeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 rounded-lg border border-red-400/30 bg-red-500/20 px-4 py-2 text-sm text-white transition-all hover:bg-red-500/30 backdrop-blur-sm"
+                    >
+                      <Youtube className="h-4 w-4" />
+                      Watch on YouTube
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
                   <button
                     onClick={() => router.push("/dashboard")}
                     className="rounded-lg border border-white/30 bg-white/20 px-4 py-2 text-sm text-white transition-all hover:bg-white/30 backdrop-blur-sm"

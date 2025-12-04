@@ -573,3 +573,154 @@ export async function extractTextFromContent(content: string): Promise<string> {
   // to extract text from uploaded files
   return content;
 }
+
+/**
+ * Generates educational content from a YouTube video using Gemini's multimodal capabilities
+ * 
+ * This function analyzes a YouTube video and generates:
+ * - Summary: Comprehensive overview of the video content
+ * - Notes: Detailed study notes with markdown formatting
+ * - Flashcards: Q&A cards for memorization
+ * - Quiz: Multiple-choice questions to test understanding
+ * 
+ * Gemini can directly analyze YouTube videos by URL, extracting visual and audio information
+ * to create comprehensive educational materials.
+ * 
+ * @param youtubeUrl - The full YouTube video URL
+ * @param title - The video title (for context)
+ * @returns Promise resolving to an object containing summary, notes, flashcards, and quiz
+ * @throws {Error} If API key is missing or AI generation fails
+ */
+export async function generateYouTubeContent(
+  youtubeUrl: string,
+  title: string
+): Promise<{
+  summary: string;
+  notes: string;
+  flashcards: Array<{ question: string; answer: string }>;
+  quiz: Array<{
+    question: string;
+    options: string[];
+    correctAnswer: number;
+    explanation?: string;
+  }>;
+}> {
+  console.log(`🎬 Generating content from YouTube video: ${title}`);
+  
+  const prompt = `You are an expert educational content creator. Analyze this YouTube video thoroughly and create comprehensive study materials.
+
+Video Title: ${title}
+Video URL: ${youtubeUrl}
+
+Please watch and analyze the entire video content (visuals, audio, and any text/slides shown), then generate the following educational materials:
+
+1. **SUMMARY** (200-400 words):
+   - Comprehensive overview of the main topics covered
+   - Key concepts and takeaways
+   - How the content is structured
+
+2. **STUDY NOTES** (detailed, markdown formatted):
+   - Clear section headings for each major topic
+   - Bullet points for key information
+   - Any formulas, definitions, or important terms
+   - Examples mentioned in the video
+   - Use markdown formatting (headers, lists, bold, etc.)
+
+3. **FLASHCARDS** (10-15 cards):
+   - Focus on key concepts, definitions, and facts
+   - Questions should test understanding, not trivial details
+   - Each card has a "question" and "answer"
+
+4. **QUIZ QUESTIONS** (5-8 questions):
+   - Multiple choice with 4 options each
+   - Test understanding of core concepts
+   - Include explanation for each answer
+   - "correctAnswer" is the index (0-3) of the correct option
+
+IMPORTANT: Return your response as a valid JSON object in this exact format:
+{
+  "summary": "Your comprehensive summary here...",
+  "notes": "# Topic 1\\n\\n- Point 1\\n- Point 2\\n\\n# Topic 2\\n\\n...",
+  "flashcards": [
+    {"question": "What is X?", "answer": "X is..."},
+    {"question": "How does Y work?", "answer": "Y works by..."}
+  ],
+  "quiz": [
+    {
+      "question": "What is the main purpose of X?",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correctAnswer": 0,
+      "explanation": "Option A is correct because..."
+    }
+  ]
+}
+
+Return ONLY the JSON object, no markdown code blocks, no additional text.`;
+
+  try {
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY is not configured");
+    }
+
+    const model = await getModel();
+    
+    // Generate content with the YouTube URL using fileData format
+    // Gemini can analyze YouTube videos when passed as fileData
+    const result = await model.generateContent([
+      {
+        fileData: {
+          mimeType: "video/mp4",
+          fileUri: youtubeUrl,
+        },
+      },
+      { text: prompt },
+    ]);
+    const response = await result.response;
+    const text = response.text().trim();
+
+    // Parse the JSON response
+    let jsonText = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+
+    try {
+      const parsed = JSON.parse(jsonText);
+      
+      // Validate and return the parsed content
+      return {
+        summary: parsed.summary || "Unable to generate summary from video.",
+        notes: parsed.notes || "Unable to generate notes from video.",
+        flashcards: Array.isArray(parsed.flashcards) ? parsed.flashcards : [],
+        quiz: Array.isArray(parsed.quiz) ? parsed.quiz : []
+      };
+    } catch (parseError) {
+      console.error("Error parsing YouTube content JSON:", parseError);
+      console.log("Raw response:", text.substring(0, 500));
+      
+      // Try to extract JSON from text
+      const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          const parsed = JSON.parse(jsonMatch[0]);
+          return {
+            summary: parsed.summary || "Unable to generate summary from video.",
+            notes: parsed.notes || "Unable to generate notes from video.",
+            flashcards: Array.isArray(parsed.flashcards) ? parsed.flashcards : [],
+            quiz: Array.isArray(parsed.quiz) ? parsed.quiz : []
+          };
+        } catch {
+          // Fall through to default return
+        }
+      }
+      
+      // Return partial content if we can extract any
+      return {
+        summary: "Unable to parse video content. The video may be too long or contain unsupported content.",
+        notes: "Unable to generate notes from this video.",
+        flashcards: [],
+        quiz: []
+      };
+    }
+  } catch (error: any) {
+    console.error("Error generating YouTube content:", error);
+    throw new Error(`Failed to analyze YouTube video: ${error.message}`);
+  }
+}

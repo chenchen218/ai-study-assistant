@@ -50,6 +50,7 @@ export interface JWTPayload {
   userId: string;  // MongoDB ObjectId as string
   email: string;   // User's email address
   role: string;    // User's role: "user" or "admin"
+  loginMethod?: "local" | "google" | "github";  // How user logged in this session
 }
 
 /**
@@ -206,4 +207,21 @@ export function isAdmin(request: NextRequest): boolean {
 
   const payload = verifyToken(token);
   return payload?.role === "admin";
+}
+
+/**
+ * Gets the login method from the JWT token in the request
+ * 
+ * Returns how the user logged in for this session (local, google, or github).
+ * This is useful for displaying the correct account type in the UI.
+ * 
+ * @param request - Next.js request object
+ * @returns Login method string if available, null otherwise
+ */
+export function getLoginMethodFromRequest(request: NextRequest): string | null {
+  const token = getTokenFromRequest(request);
+  if (!token) return null;
+
+  const payload = verifyToken(token);
+  return payload?.loginMethod || null;
 }

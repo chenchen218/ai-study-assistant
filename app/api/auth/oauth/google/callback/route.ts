@@ -116,11 +116,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Generate JWT token
+    // Generate JWT token with login method
     const token = generateToken({
       userId: String(user._id),
       email: user.email,
       role: user.role,
+      loginMethod: "google",  // Track that user logged in via Google
     });
 
     // Redirect to dashboard with token in cookie

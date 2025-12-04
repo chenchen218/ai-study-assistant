@@ -91,13 +91,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate JWT token containing user information
-    // Token payload includes: userId (MongoDB ObjectId), email, and role (user/admin)
+    // Token payload includes: userId (MongoDB ObjectId), email, role (user/admin), and loginMethod
     // Token expires in 7 days (configured in lib/auth.ts)
     // This token will be used for authentication in subsequent API requests
     const token = generateToken({
       userId: String(user._id),
       email: user.email,
       role: user.role,
+      loginMethod: "local",  // Track that user logged in via email/password
     });
 
     // Determine if we should use secure cookies (HTTPS only)

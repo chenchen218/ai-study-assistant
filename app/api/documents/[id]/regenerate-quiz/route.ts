@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { Document } from "@/models/Document";
 import { QuizQuestion } from "@/models/QuizQuestion";
+import { Note } from "@/models/Note";
 import { getFileFromS3 } from "@/lib/s3";
 import { generateQuizQuestions } from "@/lib/ai";
 import { getUserIdFromRequest } from "@/lib/auth";
@@ -13,7 +14,7 @@ export const dynamic = 'force-dynamic';
 
 /**
  * POST /api/documents/[id]/regenerate-quiz
- * Regenerates quiz questions for a document
+ * Regenerates quiz questions for a document (supports PDF, DOCX, and YouTube)
  */
 export async function POST(
   request: NextRequest,
@@ -48,31 +49,59 @@ export async function POST(
       );
     }
 
-    // Get file from S3 and extract text
-    const fileBuffer = await getFileFromS3(document.s3Key);
-    let extractedText = "";
-
-    if (document.fileType === "pdf") {
-      const pdfData = await pdfParse(fileBuffer);
-      extractedText = pdfData.text;
-    } else if (document.fileType === "docx") {
-      const result = await mammoth.extractRawText({ buffer: fileBuffer });
-      extractedText = result.value;
-    }
-
-    if (!extractedText || extractedText.trim().length === 0) {
-      return NextResponse.json(
-        { error: "Could not extract text from document" },
-        { status: 400 }
-      );
-    }
-
-    // Limit text length for AI processing
+    let truncatedText = "";
     const maxLength = 10000;
-    const truncatedText =
-      extractedText.length > maxLength
+
+    // Handle YouTube videos: use saved notes instead of re-analyzing video
+    // This is much faster and saves API quota
+    if (document.fileType === "youtube") {
+      // Get the saved notes for this document
+      const notes = await Note.findOne({ documentId: document._id });
+      
+      if (!notes || !notes.content) {
+        return NextResponse.json(
+          { error: "Notes not found for this YouTube video. Please wait for processing to complete." },
+          { status: 400 }
+        );
+      }
+
+      // Use the saved notes content to generate quiz questions
+      // This is much faster than re-analyzing the video
+      const notesContent = notes.content;
+      truncatedText = notesContent.length > maxLength 
+        ? notesContent.substring(0, maxLength) + "..." 
+        : notesContent;
+    } else {
+      // For PDF/DOCX: Get file from S3 and extract text
+      if (!document.s3Key) {
+        return NextResponse.json(
+          { error: "Document file not found" },
+          { status: 400 }
+        );
+      }
+
+      const fileBuffer = await getFileFromS3(document.s3Key);
+      let extractedText = "";
+
+      if (document.fileType === "pdf") {
+        const pdfData = await pdfParse(fileBuffer);
+        extractedText = pdfData.text;
+      } else if (document.fileType === "docx") {
+        const result = await mammoth.extractRawText({ buffer: fileBuffer });
+        extractedText = result.value;
+      }
+
+      if (!extractedText || extractedText.trim().length === 0) {
+        return NextResponse.json(
+          { error: "Could not extract text from document" },
+          { status: 400 }
+        );
+      }
+
+      truncatedText = extractedText.length > maxLength
         ? extractedText.substring(0, maxLength) + "..."
         : extractedText;
+    }
 
     // Get existing quiz questions before deleting (to avoid duplicates)
     const existingQuestions = await QuizQuestion.find({
