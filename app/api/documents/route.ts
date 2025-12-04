@@ -1,9 +1,9 @@
 /**
  * Document Upload and Processing API Route
- * 
+ *
  * This endpoint handles file uploads, text extraction, and asynchronous AI content generation.
  * It supports PDF and DOCX files up to 10MB in size.
- * 
+ *
  * POST Flow (File Upload):
  * 1. Authenticate user and validate request
  * 2. Validate file type (PDF/DOCX only) and size (10MB maximum)
@@ -15,7 +15,7 @@
  * 8. Asynchronously generate AI content (Summary, Notes, Flashcards, Quiz)
  * 9. Update document status to "completed" or "failed" based on results
  * 10. Return immediately with document ID (non-blocking)
- * 
+ *
  * GET Flow (List Documents):
  * 1. Authenticate user
  * 2. Query database for all documents belonging to the user
@@ -23,40 +23,40 @@
  * 4. Exclude sensitive S3 keys from response
  * 5. Transform MongoDB _id to id for frontend
  * 6. Return list of documents
- * 
+ *
  * AI Content Generation:
  * The system generates four types of educational content:
  * - Summary: Comprehensive overview of the document (1 per document)
  * - Notes: Detailed study notes with markdown formatting (1 per document)
  * - Flashcards: 10 interactive Q&A flashcards for practice
  * - Quiz: 5 multiple-choice questions with explanations
- * 
+ *
  * Processing Strategy:
  * - Uses Promise.allSettled() for resilience (partial failures don't block others)
  * - Processing happens asynchronously (non-blocking upload response)
  * - Frontend polls document status until processing completes
  * - Document marked as "completed" if at least one AI generation succeeds
  * - Document marked as "failed" only if all AI generations fail
- * 
+ *
  * Security:
  * - Rate limiting: 10 uploads per 15 minutes per user
  * - File type validation: Only PDF and DOCX allowed
  * - File size limits: Maximum 10MB to prevent abuse
  * - User authentication required for all operations
  * - Users can only access their own documents
- * 
+ *
  * Performance:
  * - Text truncation to 10,000 characters ensures consistent AI processing times
  * - Asynchronous processing prevents blocking the upload response
  * - S3 storage provides scalable file storage
  * - Database queries are optimized with proper indexing
- * 
+ *
  * Error Handling:
  * - Returns 400 for invalid file type, size, or missing file
  * - Returns 401 for unauthenticated requests
  * - Returns 500 for server errors
  * - AI generation failures are logged but don't block the upload
- * 
+ *
  * @route POST /api/documents - Upload and process a new document
  * @route GET /api/documents - Get list of user's documents
  * @access Protected (requires authentication)
@@ -83,11 +83,11 @@ import { rateLimiters } from "@/lib/rate-limit";
 
 // Force dynamic rendering since we use request.headers for authentication
 // This is required for Next.js to properly handle cookies and headers in serverless environments
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /**
  * POST: Upload and process a new document
- * 
+ *
  * Handles file upload, text extraction, and triggers asynchronous AI content generation.
  * Returns immediately with document ID - processing happens in the background.
  */
@@ -138,7 +138,12 @@ export async function POST(request: NextRequest) {
     const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { error: `File is too large. Maximum file size is 10MB. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB.` },
+        {
+          error: `File is too large. Maximum file size is 10MB. Your file is ${(
+            file.size /
+            (1024 * 1024)
+          ).toFixed(2)}MB.`,
+        },
         { status: 400 }
       );
     }
@@ -196,8 +201,8 @@ export async function POST(request: NextRequest) {
       fileName: file.name,
       fileType: fileType as "pdf" | "docx",
       fileSize: file.size,
-      s3Key: key,        // S3 object key for file retrieval
-      s3Url: url,        // Public URL (if bucket is public) or signed URL
+      s3Key: key, // S3 object key for file retrieval
+      s3Url: url, // Public URL (if bucket is public) or signed URL
       originalName: file.name,
       status: "processing", // Will be updated after AI processing completes
     });
@@ -231,7 +236,7 @@ export async function POST(request: NextRequest) {
     Promise.allSettled([
       // Generate Summary: Comprehensive overview of the document
       // This provides users with a quick understanding of the document's main points
-      generateSummary(truncatedText)
+      generateSummary(truncatedText, userId, String(document._id))
         .then(async (summaryContent) => {
           if (summaryContent && summaryContent.trim()) {
             await Summary.create({
@@ -248,11 +253,11 @@ export async function POST(request: NextRequest) {
           console.error("❌ Error generating summary:", err?.message || err);
           throw err;
         }),
-      
+
       // Generate Notes: Detailed study notes with markdown formatting
       // These notes are organized with headings, bullet points, and key concepts
       // Users can edit these notes after generation
-      generateNotes(truncatedText)
+      generateNotes(truncatedText, userId, String(document._id))
         .then(async (notesContent) => {
           if (notesContent && notesContent.trim()) {
             await Note.create({
@@ -270,11 +275,11 @@ export async function POST(request: NextRequest) {
           console.error("❌ Error generating notes:", err?.message || err);
           throw err;
         }),
-      
+
       // Generate Flashcards: 10 interactive Q&A flashcards for practice
       // Flashcards help users memorize key concepts through active recall
       // Each flashcard has a question and answer pair
-      generateFlashcards(truncatedText, 10)
+      generateFlashcards(truncatedText, 10, userId, String(document._id))
         .then(async (flashcards) => {
           if (flashcards && flashcards.length > 0) {
             await Flashcard.insertMany(
@@ -294,11 +299,17 @@ export async function POST(request: NextRequest) {
           console.error("❌ Error generating flashcards:", err?.message || err);
           throw err;
         }),
-      
+
       // Generate Quiz Questions: 5 multiple-choice questions with explanations
       // Quiz questions test understanding and help identify knowledge gaps
       // Each question has 4 options, one correct answer, and an optional explanation
-      generateQuizQuestions(truncatedText, 5)
+      generateQuizQuestions(
+        truncatedText,
+        5,
+        null,
+        userId,
+        String(document._id)
+      )
         .then(async (questions) => {
           if (questions && questions.length > 0) {
             await QuizQuestion.insertMany(
@@ -402,14 +413,14 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET: Retrieve list of user's documents
- * 
+ *
  * Returns all documents belonging to the authenticated user, sorted by creation date (newest first).
  * This is used by the dashboard to display the user's document list.
- * 
+ *
  * Security:
  * - Only returns documents belonging to the authenticated user
  * - Excludes sensitive S3 keys from response
- * 
+ *
  * Response Format:
  * - Array of document objects with: id, fileName, fileType, status, uploadedAt
  * - Sorted by createdAt in descending order (newest first)

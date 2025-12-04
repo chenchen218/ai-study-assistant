@@ -1,10 +1,10 @@
 /**
  * Q&A (Question & Answer) API Route
- * 
+ *
  * This endpoint allows users to ask questions about their uploaded documents.
  * The system retrieves the original document from S3, extracts text, and uses AI
  * to generate contextual answers based on the document content.
- * 
+ *
  * Flow:
  * 1. Apply rate limiting to prevent abuse (20 questions per 15 minutes per user)
  * 2. Authenticate user and extract userId from JWT token
@@ -16,35 +16,35 @@
  * 8. Truncate text to 10,000 characters (to avoid AI token limits)
  * 9. Use AI to generate answer based on document content and user's question
  * 10. Return answer along with the original question
- * 
+ *
  * Use Cases:
  * - Students asking specific questions about study materials
  * - Clarifying concepts from uploaded documents
  * - Getting explanations for complex topics
  * - Understanding specific sections of a document
- * 
+ *
  * Security:
  * - Rate limiting: 20 questions per 15 minutes per user
  * - User can only ask questions about their own documents
  * - Ownership verification required before processing
  * - Authentication required for all requests
- * 
+ *
  * Performance:
  * - Text extraction happens on-demand (not cached) to ensure accuracy
  * - Text is truncated to 10,000 characters to ensure fast AI processing
  * - AI processing uses the same model selection and caching as other AI features
- * 
+ *
  * Error Handling:
  * - Returns 400 if document ID or question is missing
  * - Returns 401 if user is not authenticated
  * - Returns 404 if document not found or doesn't belong to user
  * - Returns 400 if text extraction fails
  * - Returns 500 for server errors
- * 
+ *
  * Response Format:
  * - answer: AI-generated answer based on document content
  * - question: Echo of the original question (for frontend display)
- * 
+ *
  * @route POST /api/qa
  * @access Protected (requires authentication, own documents only)
  * @body {string} documentId - ID of the document to ask questions about
@@ -64,7 +64,7 @@ import { getUserIdFromRequest } from "@/lib/auth";
 import { rateLimiters } from "@/lib/rate-limit";
 
 // Force dynamic rendering since we use request.headers for authentication
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   // Apply rate limiting to prevent abuse and control costs
@@ -120,10 +120,13 @@ export async function POST(request: NextRequest) {
     if (document.fileType === "youtube") {
       // Get the saved notes for this document
       const notes = await Note.findOne({ documentId: document._id });
-      
+
       if (!notes || !notes.content) {
         return NextResponse.json(
-          { error: "Notes not found for this YouTube video. Please wait for processing to complete." },
+          {
+            error:
+              "Notes not found for this YouTube video. Please wait for processing to complete.",
+          },
           { status: 400 }
         );
       }
@@ -131,9 +134,10 @@ export async function POST(request: NextRequest) {
       // Use the saved notes content for Q&A
       // This provides much better context than just the video URL
       const notesContent = notes.content;
-      truncatedText = notesContent.length > maxLength 
-        ? notesContent.substring(0, maxLength) + "..." 
-        : notesContent;
+      truncatedText =
+        notesContent.length > maxLength
+          ? notesContent.substring(0, maxLength) + "..."
+          : notesContent;
     } else {
       // For PDF/DOCX: Retrieve file from S3 storage and extract text
       // We need the original document text to answer questions accurately
@@ -168,16 +172,22 @@ export async function POST(request: NextRequest) {
       }
 
       // Truncate text to 10,000 characters for AI processing
-      truncatedText = extractedText.length > maxLength
-        ? extractedText.substring(0, maxLength) + "..."
-        : extractedText;
+      truncatedText =
+        extractedText.length > maxLength
+          ? extractedText.substring(0, maxLength) + "..."
+          : extractedText;
     }
 
     // Generate answer using AI
     // The AI model analyzes the document content and question to provide
     // a contextual answer based on the document's information
     // The answer is generated specifically for this question and document combination
-    const answer = await answerQuestion(truncatedText, question);
+    const answer = await answerQuestion(
+      truncatedText,
+      question,
+      userId,
+      documentId
+    );
 
     // Return answer along with the original question
     // This allows the frontend to display the Q&A pair in a conversation format

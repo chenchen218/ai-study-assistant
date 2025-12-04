@@ -46,6 +46,17 @@ const FlashcardPerformanceSchema: Schema = new Schema(
   }
 );
 
+// Indexes for performance optimization
+// Single field indexes
+FlashcardPerformanceSchema.index({ userId: 1 }); // For user-specific queries
+FlashcardPerformanceSchema.index({ documentId: 1 }); // For document-specific queries
+FlashcardPerformanceSchema.index({ flashcardId: 1 }); // For flashcard-specific queries
+
+// Compound indexes for common query patterns
+FlashcardPerformanceSchema.index({ userId: 1, documentId: 1 }); // For: find({ userId, documentId })
+FlashcardPerformanceSchema.index({ userId: 1, reviewedAt: -1 }); // For: find({ userId }).sort({ reviewedAt: -1 })
+FlashcardPerformanceSchema.index({ userId: 1, isKnown: 1 }); // For mastered flashcards queries
+
 export const FlashcardPerformance: Model<IFlashcardPerformance> =
   mongoose.models.FlashcardPerformance ||
   mongoose.model<IFlashcardPerformance>(

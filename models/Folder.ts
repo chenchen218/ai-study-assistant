@@ -30,11 +30,10 @@ const FolderSchema: Schema = new Schema(
   }
 );
 
-// Index for faster queries
-FolderSchema.index({ userId: 1, name: 1 });
+// Indexes for performance optimization
+FolderSchema.index({ userId: 1, name: 1 }); // For: find({ userId, name })
+FolderSchema.index({ userId: 1 }); // For: find({ userId })
+FolderSchema.index({ userId: 1, createdAt: -1 }); // For sorting by creation date
 
 export const Folder: Model<IFolder> =
   mongoose.models.Folder || mongoose.model<IFolder>("Folder", FolderSchema);
-
-
-

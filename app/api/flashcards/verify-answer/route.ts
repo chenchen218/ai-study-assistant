@@ -7,7 +7,7 @@ import { verifyFlashcardAnswer } from "@/lib/ai";
 import { rateLimiters } from "@/lib/rate-limit";
 
 // Force dynamic rendering since we use request.headers
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /**
  * POST /api/flashcards/verify-answer
@@ -49,17 +49,16 @@ export async function POST(request: NextRequest) {
 
     // Verify ownership
     if (String(flashcard.userId) !== userId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
     // Verify the answer using AI
     const verification = await verifyFlashcardAnswer(
       flashcard.question,
       flashcard.answer,
-      userAnswer.trim()
+      userAnswer.trim(),
+      userId,
+      String(flashcard.documentId)
     );
 
     // Always create/update performance record
@@ -94,4 +93,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
