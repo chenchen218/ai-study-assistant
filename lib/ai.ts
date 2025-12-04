@@ -1,26 +1,26 @@
 /**
  * AI Content Generation Module
- * 
+ *
  * This module provides functions for generating educational content using Google's Gemini AI.
  * It handles all AI-powered features including summaries, notes, flashcards, and quiz questions.
- * 
+ *
  * Features:
  * - Automatic model selection with fallback support
  * - Model caching for performance
  * - Error handling and graceful degradation
  * - JSON parsing with fallback strategies
- * 
+ *
  * Model Selection:
  * The system tries multiple Gemini models in order of preference and caches the first working one.
  * This ensures compatibility even when Google updates model names or availability.
- * 
+ *
  * Content Generation:
  * - Summary: Comprehensive document overview
  * - Notes: Detailed study notes with markdown formatting
  * - Flashcards: Interactive Q&A cards for practice
  * - Quiz Questions: Multiple-choice questions with explanations
  * - Q&A: Contextual answers to user questions
- * 
+ *
  * @module lib/ai
  */
 
@@ -44,19 +44,19 @@ let cachedWorkingModel: string | null = null;
 
 /**
  * Gets a working Gemini AI model by trying multiple model names in order
- * 
+ *
  * This function implements a fallback strategy to ensure compatibility:
  * 1. Check if we have a cached working model (use it if available)
  * 2. Try models in order of preference (latest → stable → experimental)
  * 3. Test each model with a simple API call
  * 4. Cache the first working model for future use
  * 5. Throw error if no models work
- * 
+ *
  * Why this approach?
  * - Google frequently updates model names and availability
  * - Different regions may have different model availability
  * - Caching reduces API calls and improves performance
- * 
+ *
  * @returns Promise resolving to a configured Gemini model instance
  * @throws {Error} If no working model is found after trying all options
  */
@@ -71,10 +71,10 @@ const getModel = async (): Promise<any> => {
   // Order matters: we prefer newer, more capable models first
   const modelsToTry = [
     "models/gemini-2.5-flash-preview-05-20", // Latest preview version
-    "models/gemini-2.5-flash",                 // Stable version
-    "models/gemini-2.0-flash-exp",            // Experimental but available
-    "models/gemini-flash-latest",             // Latest alias (may change)
-    "models/gemini-2.0-flash",                // Alternative stable version
+    "models/gemini-2.5-flash", // Stable version
+    "models/gemini-2.0-flash-exp", // Experimental but available
+    "models/gemini-flash-latest", // Latest alias (may change)
+    "models/gemini-2.0-flash", // Alternative stable version
   ];
 
   // Try each model until one works
@@ -104,17 +104,17 @@ const getModel = async (): Promise<any> => {
 
 /**
  * Generates a comprehensive summary of educational content using AI
- * 
+ *
  * Creates a well-structured summary that captures all key concepts and main points
  * from the provided educational content. The summary is designed to help students
  * quickly understand the document's main ideas.
- * 
+ *
  * Summary Characteristics:
  * - Concise but comprehensive
  * - Well-structured with clear organization
  * - Captures all key concepts and main points
  * - Suitable for quick review and understanding
- * 
+ *
  * @param content - The text content to summarize (should be under 10,000 characters)
  * @returns Promise resolving to the generated summary text
  * @throws {Error} If API key is missing or AI generation fails
@@ -152,19 +152,19 @@ ${content}`;
 
 /**
  * Generates detailed study notes from educational content using AI
- * 
+ *
  * Creates well-organized study notes with markdown formatting, including:
  * - Clear section headings
  * - Bullet points for key information
  * - Highlighted key concepts
  * - Structured organization for easy review
- * 
+ *
  * Notes Format:
  * - Uses markdown formatting (headings, lists, emphasis)
  * - Organized into logical sections
  * - Suitable for both reading and editing
  * - Can be exported to various formats
- * 
+ *
  * @param content - The text content to create notes from (should be under 10,000 characters)
  * @returns Promise resolving to markdown-formatted study notes
  * @throws {Error} If API key is missing or AI generation fails
@@ -202,22 +202,22 @@ ${content}`;
 
 /**
  * Generates flashcards from educational content using AI
- * 
+ *
  * Creates interactive Q&A flashcards that help students memorize key concepts
  * through active recall. Each flashcard has a question and answer pair.
- * 
+ *
  * Flashcard Focus Areas:
  * - Key concepts, theories, definitions, and principles
  * - Important facts, formulas, and relationships
  * - Critical thinking questions about the material
  * - Academic terminology and technical terms
- * 
+ *
  * What to Avoid:
  * - Personal names (unless central to the concept)
  * - Trivial details like dates without context
  * - Non-academic information
  * - Questions that don't test understanding
- * 
+ *
  * JSON Parsing:
  * The function includes robust JSON parsing with multiple fallback strategies:
  * 1. Direct JSON parsing
@@ -225,7 +225,7 @@ ${content}`;
  * 3. Extract JSON from markdown code blocks
  * 4. Extract JSON array using regex
  * 5. Return empty array if all parsing fails (graceful degradation)
- * 
+ *
  * @param content - The text content to create flashcards from (should be under 10,000 characters)
  * @param count - Number of flashcards to generate (default: 10)
  * @returns Promise resolving to an array of flashcard objects with question and answer
@@ -422,30 +422,30 @@ ${content}`;
 
 /**
  * Verifies if a user's answer to a flashcard question is correct
- * 
+ *
  * Uses AI to evaluate semantic similarity and correctness of user's answer.
  * This provides intelligent feedback beyond simple string matching.
- * 
+ *
  * Evaluation Criteria:
  * - Semantic similarity: Does the answer convey the same meaning?
  * - Key concepts: Does the answer demonstrate understanding?
  * - Completeness: Is the answer sufficiently complete?
  * - Accuracy: Are there any factual errors?
- * 
+ *
  * Leniency:
  * - Different wording that conveys the same meaning
  * - Minor grammatical differences
  * - Partial answers that show understanding
- * 
+ *
  * Strictness:
  * - Factual errors
  * - Completely incorrect answers
  * - Answers that show no understanding
- * 
+ *
  * Fallback Strategy:
  * If AI parsing fails, falls back to keyword matching (50% threshold).
  * This ensures the feature works even if AI response format is unexpected.
- * 
+ *
  * @param question - The flashcard question
  * @param correctAnswer - The correct answer from the flashcard
  * @param userAnswer - The user's input answer to verify
@@ -499,21 +499,32 @@ IMPORTANT:
     const text = response.text().trim();
 
     // Extract JSON from response
-    let jsonText = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+    let jsonText = text
+      .replace(/```json\s*/g, "")
+      .replace(/```\s*/g, "")
+      .trim();
 
     try {
       const parsed = JSON.parse(jsonText);
       return {
         isCorrect: parsed.isCorrect === true,
-        feedback: parsed.feedback || (parsed.isCorrect ? "Correct!" : "Incorrect. Please review the answer."),
+        feedback:
+          parsed.feedback ||
+          (parsed.isCorrect
+            ? "Correct!"
+            : "Incorrect. Please review the answer."),
       };
     } catch (parseError) {
       console.error("Error parsing verification JSON:", parseError);
       // Fallback: simple keyword matching
       const userLower = userAnswer.toLowerCase();
       const correctLower = correctAnswer.toLowerCase();
-      const keyWords = correctLower.split(/\s+/).filter((w: string) => w.length > 3);
-      const matches = keyWords.filter((word: string) => userLower.includes(word)).length;
+      const keyWords = correctLower
+        .split(/\s+/)
+        .filter((w: string) => w.length > 3);
+      const matches = keyWords.filter((word: string) =>
+        userLower.includes(word)
+      ).length;
       const isCorrect = matches >= keyWords.length * 0.5; // At least 50% keyword match
 
       return {
@@ -576,16 +587,16 @@ export async function extractTextFromContent(content: string): Promise<string> {
 
 /**
  * Generates educational content from a YouTube video using Gemini's multimodal capabilities
- * 
- * This function analyzes a YouTube video and generates:
+ *
+ * This function analyzes a YouTube video directly using Gemini's fileData API and generates:
  * - Summary: Comprehensive overview of the video content
  * - Notes: Detailed study notes with markdown formatting
  * - Flashcards: Q&A cards for memorization
  * - Quiz: Multiple-choice questions to test understanding
- * 
+ *
  * Gemini can directly analyze YouTube videos by URL, extracting visual and audio information
  * to create comprehensive educational materials.
- * 
+ *
  * @param youtubeUrl - The full YouTube video URL
  * @param title - The video title (for context)
  * @returns Promise resolving to an object containing summary, notes, flashcards, and quiz
@@ -606,7 +617,7 @@ export async function generateYouTubeContent(
   }>;
 }> {
   console.log(`🎬 Generating content from YouTube video: ${title}`);
-  
+
   const prompt = `You are an expert educational content creator. Analyze this YouTube video thoroughly and create comprehensive study materials.
 
 Video Title: ${title}
@@ -663,7 +674,7 @@ Return ONLY the JSON object, no markdown code blocks, no additional text.`;
     }
 
     const model = await getModel();
-    
+
     // Generate content with the YouTube URL using fileData format
     // Gemini can analyze YouTube videos when passed as fileData
     const result = await model.generateContent([
@@ -678,45 +689,142 @@ Return ONLY the JSON object, no markdown code blocks, no additional text.`;
     const response = await result.response;
     const text = response.text().trim();
 
-    // Parse the JSON response
-    let jsonText = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+    // Parse the JSON response with robust error handling
+    let jsonText = text
+      .replace(/```json\s*/g, "")
+      .replace(/```\s*/g, "")
+      .trim();
+
+    // Extract the JSON object by finding the first { and matching closing }
+    // This handles cases where there's extra text after the JSON
+    function extractJSONObject(text: string): string | null {
+      const startIndex = text.indexOf("{");
+      if (startIndex === -1) return null;
+
+      let depth = 0;
+      let inString = false;
+      let escapeNext = false;
+
+      for (let i = startIndex; i < text.length; i++) {
+        const char = text[i];
+
+        if (escapeNext) {
+          escapeNext = false;
+          continue;
+        }
+
+        if (char === "\\") {
+          escapeNext = true;
+          continue;
+        }
+
+        if (char === '"' && !escapeNext) {
+          inString = !inString;
+          continue;
+        }
+
+        if (!inString) {
+          if (char === "{") {
+            depth++;
+          } else if (char === "}") {
+            depth--;
+            if (depth === 0) {
+              return text.substring(startIndex, i + 1);
+            }
+          }
+        }
+      }
+
+      return null; // No complete JSON object found
+    }
+
+    const extractedJson = extractJSONObject(jsonText);
+    if (extractedJson) {
+      jsonText = extractedJson;
+    }
 
     try {
       const parsed = JSON.parse(jsonText);
-      
+
       // Validate and return the parsed content
       return {
         summary: parsed.summary || "Unable to generate summary from video.",
         notes: parsed.notes || "Unable to generate notes from video.",
         flashcards: Array.isArray(parsed.flashcards) ? parsed.flashcards : [],
-        quiz: Array.isArray(parsed.quiz) ? parsed.quiz : []
+        quiz: Array.isArray(parsed.quiz) ? parsed.quiz : [],
       };
-    } catch (parseError) {
+    } catch (parseError: any) {
       console.error("Error parsing YouTube content JSON:", parseError);
-      console.log("Raw response:", text.substring(0, 500));
-      
-      // Try to extract JSON from text
-      const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        try {
-          const parsed = JSON.parse(jsonMatch[0]);
-          return {
-            summary: parsed.summary || "Unable to generate summary from video.",
-            notes: parsed.notes || "Unable to generate notes from video.",
-            flashcards: Array.isArray(parsed.flashcards) ? parsed.flashcards : [],
-            quiz: Array.isArray(parsed.quiz) ? parsed.quiz : []
-          };
-        } catch {
-          // Fall through to default return
+      console.log("Raw response (first 1000 chars):", text.substring(0, 1000));
+      console.log("JSON text (first 1000 chars):", jsonText.substring(0, 1000));
+
+      // Try to fix common JSON issues and parse again
+      try {
+        // Try to fix truncated JSON by closing unclosed objects/arrays
+        let fixedJson = jsonText;
+
+        // Count open/close braces
+        const openBraces = (fixedJson.match(/\{/g) || []).length;
+        const closeBraces = (fixedJson.match(/\}/g) || []).length;
+        const openBrackets = (fixedJson.match(/\[/g) || []).length;
+        const closeBrackets = (fixedJson.match(/\]/g) || []).length;
+
+        // Close unclosed arrays first, then objects
+        if (closeBrackets < openBrackets) {
+          fixedJson += "]".repeat(openBrackets - closeBrackets);
         }
+        if (closeBraces < openBraces) {
+          fixedJson += "}".repeat(openBraces - closeBraces);
+        }
+
+        const parsed = JSON.parse(fixedJson);
+        console.log("✅ Successfully parsed after fixing JSON");
+        return {
+          summary: parsed.summary || "Unable to generate summary from video.",
+          notes: parsed.notes || "Unable to generate notes from video.",
+          flashcards: Array.isArray(parsed.flashcards) ? parsed.flashcards : [],
+          quiz: Array.isArray(parsed.quiz) ? parsed.quiz : [],
+        };
+      } catch (fixError) {
+        console.error("Failed to fix JSON:", fixError);
       }
-      
-      // Return partial content if we can extract any
+
+      // Try to extract partial content using regex (multiline mode)
+      // Use a more robust regex that handles escaped quotes and newlines
+      const summaryMatch = jsonText.match(
+        /"summary"\s*:\s*"((?:[^"\\]|\\.|\\n)*)"/
+      );
+      const notesMatch = jsonText.match(
+        /"notes"\s*:\s*"((?:[^"\\]|\\.|\\n)*)"/
+      );
+
+      if (summaryMatch || notesMatch) {
+        console.log("⚠️ Extracted partial content from malformed JSON");
+        return {
+          summary: summaryMatch
+            ? summaryMatch[1]
+                .replace(/\\n/g, "\n")
+                .replace(/\\"/g, '"')
+                .replace(/\\\\/g, "\\")
+            : "Unable to generate summary from video.",
+          notes: notesMatch
+            ? notesMatch[1]
+                .replace(/\\n/g, "\n")
+                .replace(/\\"/g, '"')
+                .replace(/\\\\/g, "\\")
+            : "Unable to generate notes from video.",
+          flashcards: [],
+          quiz: [],
+        };
+      }
+
+      // Return error message
       return {
-        summary: "Unable to parse video content. The video may be too long or contain unsupported content.",
+        summary:
+          "Unable to parse video content. The video may be too long or contain unsupported content.",
         notes: "Unable to generate notes from this video.",
         flashcards: [],
-        quiz: []
+        quiz: [],
       };
     }
   } catch (error: any) {

@@ -1,28 +1,28 @@
 /**
  * Get Current User API Route
- * 
+ *
  * This endpoint returns the currently authenticated user's information.
  * It is used by the frontend to check authentication status and populate user state.
- * 
+ *
  * Flow:
  * 1. Extract JWT token from request (from httpOnly cookie or Authorization header)
  * 2. Verify token and extract userId using getUserIdFromRequest()
  * 3. Query database to find user by ID
  * 4. Exclude password field from response for security
  * 5. Return user data including id, email, name, role, provider, picture, and createdAt
- * 
+ *
  * Security:
  * - Requires valid JWT token (handled by getUserIdFromRequest)
  * - Password field is explicitly excluded from response using .select("-password")
  * - Returns 401 Unauthorized if no valid token is found
  * - Returns 404 Not Found if user doesn't exist (shouldn't happen with valid token)
- * 
+ *
  * Usage:
  * - Called on app mount to check authentication status
  * - Used by AuthProvider to populate user state in React context
  * - Called after OAuth redirects to get user information
  * - Can be called periodically to refresh user data
- * 
+ *
  * Response Data:
  * - id: MongoDB ObjectId of the user
  * - email: User's email address
@@ -31,7 +31,7 @@
  * - provider: Authentication provider ("local", "google", or "github")
  * - picture: OAuth provider profile picture URL (if available)
  * - createdAt: Account creation timestamp
- * 
+ *
  * @route GET /api/auth/me
  * @access Protected (requires authentication)
  * @returns {object} User object (excluding password)
@@ -44,7 +44,7 @@ import { getUserIdFromRequest, getLoginMethodFromRequest } from "@/lib/auth";
 
 // Force dynamic rendering since we use request.headers for authentication
 // This is required for Next.js to properly handle cookies and headers in serverless environments
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
@@ -71,22 +71,28 @@ export async function GET(request: NextRequest) {
 
     // Generate signed URL for avatar if user has uploaded one
     // This provides temporary access to the S3-stored avatar image
-    let avatarUrl = null;
+    let avatarUrl: string | null = null;
     if (user.avatar) {
       try {
+        // Dynamic import for better serverless compatibility
         const AWS = await import("aws-sdk");
         const s3Client = new AWS.default.S3({
           accessKeyId: process.env.AWS_ACCESS_KEY_ID,
           secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
           region: process.env.AWS_REGION || "us-east-1",
         });
+
         avatarUrl = s3Client.getSignedUrl("getObject", {
-          Bucket: process.env.AWS_S3_BUCKET_NAME || "ai-study-assistant-documents",
+          Bucket:
+            process.env.AWS_S3_BUCKET_NAME || "ai-study-assistant-documents",
           Key: user.avatar,
           Expires: 3600 * 24 * 7, // 7 days
         });
+        console.log("✅ Generated avatar URL for:", user.avatar);
       } catch (error) {
-        console.error("Error generating avatar URL:", error);
+        console.error("❌ Error generating avatar URL:", error);
+        console.error("Avatar key:", user.avatar);
+        // Continue without avatarUrl if generation fails
       }
     }
 
@@ -94,7 +100,6 @@ export async function GET(request: NextRequest) {
     // This tells us how the user logged in for THIS session (local, google, or github)
     // This is more accurate than user.provider which may have been overwritten
     const loginMethod = getLoginMethodFromRequest(request);
-
     // Return user data (excluding password)
     // Includes all information needed by frontend for user interface
     return NextResponse.json({
@@ -106,7 +111,7 @@ export async function GET(request: NextRequest) {
         provider: loginMethod || user.provider || "local", // Use loginMethod from token (current session)
         picture: user.picture, // OAuth provider profile picture (if available)
         avatar: user.avatar, // S3 key for user-uploaded avatar
-        avatarUrl: avatarUrl, // Signed URL for avatar (temporary access)
+        avatarUrl: avatarUrl, // Signed URL for avatar (valid for 7 days)
         createdAt: user.createdAt,
       },
     });
