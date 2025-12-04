@@ -1,36 +1,36 @@
 /**
  * Learning Analytics API Route
- * 
+ *
  * This endpoint aggregates and returns comprehensive learning analytics for the authenticated user.
  * It provides insights into study habits, performance, and progress over time.
- * 
+ *
  * Analytics Data Provided:
  * - Study Time: Total minutes studied, broken down by activity type and daily
  * - Study Streaks: Consecutive days with study sessions
  * - Quiz Performance: Total attempts, correct answers, accuracy percentage, accuracy by document
  * - Flashcard Performance: Total reviewed, known cards, mastery percentage
  * - Reports: Weekly and monthly summaries with aggregated statistics
- * 
+ *
  * Time Periods:
  * - week: Last 7 days
  * - month: Last 30 days
  * - all: All time data
- * 
+ *
  * Data Aggregation:
  * - Uses MongoDB aggregation pipelines for efficient data processing
  * - Calculates statistics from StudySession, QuizPerformance, and FlashcardPerformance models
  * - Groups data by document, day, and activity type
  * - Provides daily breakdowns for chart visualization
- * 
+ *
  * Performance:
  * - All queries are optimized with proper indexing
  * - Aggregation pipelines reduce database load
  * - Parallel queries where possible
- * 
+ *
  * Security:
  * - Requires authentication
  * - Users can only access their own analytics data
- * 
+ *
  * @route GET /api/analytics?period=week|month|all
  * @access Protected (requires authentication)
  * @query period - Time period for analytics (default: "week")
@@ -46,7 +46,7 @@ import { QuizPerformance } from "@/models/QuizPerformance";
 import { FlashcardPerformance } from "@/models/FlashcardPerformance";
 
 // Force dynamic rendering since we use request.headers for authentication
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
