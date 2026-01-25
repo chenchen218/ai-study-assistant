@@ -19,17 +19,14 @@ const AICostSchema: Schema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true,
     },
     documentId: {
       type: Schema.Types.ObjectId,
       ref: "Document",
-      index: true,
     },
     operation: {
       type: String,
       required: true,
-      index: true,
     },
     modelName: {
       type: String,

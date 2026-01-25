@@ -30,9 +30,8 @@ const SummarySchema: Schema = new Schema(
 );
 
 // Indexes for performance optimization
-SummarySchema.index({ documentId: 1 }); // For: findOne({ documentId })
 SummarySchema.index({ userId: 1 }); // For user-specific queries
-SummarySchema.index({ documentId: 1 }, { unique: true }); // One summary per document
+SummarySchema.index({ documentId: 1 }, { unique: true }); // One summary per document (unique index covers documentId queries)
 
 export const Summary: Model<ISummary> =
   mongoose.models.Summary || mongoose.model<ISummary>("Summary", SummarySchema);
