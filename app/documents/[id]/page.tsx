@@ -270,7 +270,7 @@ export default function DocumentPage() {
     return () => {
       void endSession();
     };
-  }, [user, documentId, router]);
+  }, [user, authLoading, documentId, router]);
 
   useEffect(() => {
     if (qaScrollRef.current) {
