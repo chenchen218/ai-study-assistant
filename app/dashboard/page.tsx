@@ -285,7 +285,7 @@ export default function DashboardPage() {
     return () => {
       clearPolling();
     };
-  }, [user, router, fetchDocuments, fetchFolders, clearPolling]);
+  }, [user, authLoading, router, fetchDocuments, fetchFolders, clearPolling]);
 
   const uploadFile = async (file: File) => {
     if (!file) return;

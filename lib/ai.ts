@@ -197,13 +197,13 @@ ${content}`;
     // Generate content using AI model (with timeout)
     const generatePromise = model
       .generateContent(prompt)
-      .then((result) => result.response);
+      .then((result: any) => result.response);
     
     const response = await withTimeout(
       generatePromise,
       TIMEOUTS.default,
       "Summary generation timed out"
-    );
+    ) as any;
     // Extract and return generated text
     return response.text() || "";
   } catch (error: any) {
@@ -265,13 +265,13 @@ ${content}`;
     // Generate content using AI model (with timeout)
     const generatePromise = model
       .generateContent(prompt)
-      .then((result) => result.response);
+      .then((result: any) => result.response);
     
     const response = await withTimeout(
       generatePromise,
       TIMEOUTS.default,
       "Notes generation timed out"
-    );
+    ) as any;
     const text = response.text() || "";
 
     // Get token usage and track cost
@@ -383,13 +383,13 @@ ${content}`;
     // Generate content using AI model (with timeout)
     const generatePromise = model
       .generateContent(prompt)
-      .then((result) => result.response);
+      .then((result: any) => result.response);
     
     const response = await withTimeout(
       generatePromise,
       TIMEOUTS.default,
       "Flashcards generation timed out"
-    );
+    ) as any;
     const text = response.text();
 
     // Get token usage and track cost
@@ -660,13 +660,13 @@ IMPORTANT:
 
     const generatePromise = model
       .generateContent(prompt)
-      .then((result) => result.response);
+      .then((result: any) => result.response);
     
     const response = await withTimeout(
       generatePromise,
       TIMEOUTS.default,
       "Flashcard verification timed out"
-    );
+    ) as any;
     const text = response.text().trim();
 
     // Get token usage and track cost
@@ -759,13 +759,13 @@ Question: ${question}`;
 
     const generatePromise = model
       .generateContent(prompt)
-      .then((result) => result.response);
+      .then((result: any) => result.response);
     
     const response = await withTimeout(
       generatePromise,
       TIMEOUTS.default,
       "Question answering timed out"
-    );
+    ) as any;
     const text =
       response.text() || "I apologize, but I could not generate an answer.";
 
@@ -914,13 +914,13 @@ Return ONLY the JSON object, no markdown code blocks, no additional text.`;
         },
         { text: prompt },
       ])
-      .then((result) => result.response);
+      .then((result: any) => result.response);
     
     const response = await withTimeout(
       generatePromise,
       TIMEOUTS.youtube,
       "YouTube video analysis timed out. The video may be too long or complex."
-    );
+    ) as any;
     const text = response.text().trim();
 
     // Get token usage and track cost

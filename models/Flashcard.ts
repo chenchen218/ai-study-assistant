@@ -35,9 +35,8 @@ const FlashcardSchema: Schema = new Schema(
 );
 
 // Indexes for performance optimization
-FlashcardSchema.index({ documentId: 1 }); // For: find({ documentId })
 FlashcardSchema.index({ userId: 1 }); // For user-specific queries
-FlashcardSchema.index({ documentId: 1, userId: 1 }); // Compound index for common queries
+FlashcardSchema.index({ documentId: 1, userId: 1 }); // Compound index for common queries (covers documentId queries via leftmost prefix)
 
 export const Flashcard: Model<IFlashcard> =
   mongoose.models.Flashcard ||

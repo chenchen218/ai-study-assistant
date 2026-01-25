@@ -16,7 +16,6 @@ const EmailVerificationSchema: Schema = new Schema(
       required: true,
       lowercase: true,
       trim: true,
-      index: true,
     },
     code: {
       type: String,
