@@ -48,6 +48,41 @@ const genAI = new GoogleGenerativeAI(apiKey);
 // Once a working model is found, it's reused for all subsequent requests
 let cachedWorkingModel: string | null = null;
 
+// Generation config for faster responses
+// These settings optimize for speed over creativity
+const GENERATION_CONFIG = {
+  temperature: 0.7, // Lower temperature = faster, more deterministic
+  topP: 0.9, // Focus on most likely tokens
+  topK: 40, // Limit candidate tokens
+  maxOutputTokens: 8192, // Maximum response length
+};
+
+// Timeout configurations (in milliseconds)
+const TIMEOUTS = {
+  default: 60000, // 60 seconds for regular content
+  youtube: 300000, // 5 minutes for YouTube video analysis
+  modelTest: 10000, // 10 seconds for model testing
+};
+
+/**
+ * Wraps a promise with a timeout
+ * @param promise - The promise to wrap
+ * @param timeoutMs - Timeout in milliseconds
+ * @param errorMessage - Custom error message
+ */
+function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  errorMessage: string = "Operation timed out"
+): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
+    ),
+  ]);
+}
+
 /**
  * Gets a working Gemini AI model by trying multiple model names in order
  *
@@ -70,7 +105,10 @@ const getModel = async (): Promise<any> => {
   // If we have a cached working model, use it immediately
   // This avoids unnecessary API calls
   if (cachedWorkingModel) {
-    return genAI.getGenerativeModel({ model: cachedWorkingModel });
+    return genAI.getGenerativeModel({ 
+      model: cachedWorkingModel,
+      generationConfig: GENERATION_CONFIG,
+    });
   }
 
   // Try models in order: latest stable, then alternatives
@@ -86,17 +124,25 @@ const getModel = async (): Promise<any> => {
   // Try each model until one works
   for (const modelName of modelsToTry) {
     try {
-      const model = genAI.getGenerativeModel({ model: modelName });
-      // Test if it works with a simple API call
+      const model = genAI.getGenerativeModel({ 
+        model: modelName,
+        generationConfig: GENERATION_CONFIG,
+      });
+      // Test if it works with a simple API call (with timeout)
       // This validates the model is available and API key is valid
-      const testResult = await model.generateContent("test");
-      await testResult.response;
+      const testPromise = model.generateContent("test").then(r => r.response);
+      await withTimeout(
+        testPromise,
+        TIMEOUTS.modelTest,
+        `Model test timeout: ${modelName}`
+      );
       // If we get here, the model works
       cachedWorkingModel = modelName;
       console.log(`✅ Using working model: ${modelName}`);
       return model;
     } catch (err: any) {
       // Model not available or API error - try next model
+      console.log(`⚠️ Model ${modelName} failed:`, err.message);
       continue;
     }
   }
@@ -148,9 +194,16 @@ ${content}`;
     }
     // Get working AI model (with caching and fallback)
     const model = await getModel();
-    // Generate content using AI model
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
+    // Generate content using AI model (with timeout)
+    const generatePromise = model
+      .generateContent(prompt)
+      .then((result) => result.response);
+    
+    const response = await withTimeout(
+      generatePromise,
+      TIMEOUTS.default,
+      "Summary generation timed out"
+    );
     // Extract and return generated text
     return response.text() || "";
   } catch (error: any) {
@@ -209,9 +262,16 @@ ${content}`;
     // Estimate input tokens
     const estimatedInputTokens = estimateTokens(prompt);
 
-    // Generate content using AI model
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
+    // Generate content using AI model (with timeout)
+    const generatePromise = model
+      .generateContent(prompt)
+      .then((result) => result.response);
+    
+    const response = await withTimeout(
+      generatePromise,
+      TIMEOUTS.default,
+      "Notes generation timed out"
+    );
     const text = response.text() || "";
 
     // Get token usage and track cost
@@ -320,9 +380,16 @@ ${content}`;
     // Estimate input tokens
     const estimatedInputTokens = estimateTokens(prompt);
 
-    // Generate content using AI model
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
+    // Generate content using AI model (with timeout)
+    const generatePromise = model
+      .generateContent(prompt)
+      .then((result) => result.response);
+    
+    const response = await withTimeout(
+      generatePromise,
+      TIMEOUTS.default,
+      "Flashcards generation timed out"
+    );
     const text = response.text();
 
     // Get token usage and track cost
@@ -591,8 +658,15 @@ IMPORTANT:
     // Estimate input tokens
     const estimatedInputTokens = estimateTokens(prompt);
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
+    const generatePromise = model
+      .generateContent(prompt)
+      .then((result) => result.response);
+    
+    const response = await withTimeout(
+      generatePromise,
+      TIMEOUTS.default,
+      "Flashcard verification timed out"
+    );
     const text = response.text().trim();
 
     // Get token usage and track cost
@@ -683,8 +757,15 @@ Question: ${question}`;
     // Estimate input tokens
     const estimatedInputTokens = estimateTokens(prompt);
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
+    const generatePromise = model
+      .generateContent(prompt)
+      .then((result) => result.response);
+    
+    const response = await withTimeout(
+      generatePromise,
+      TIMEOUTS.default,
+      "Question answering timed out"
+    );
     const text =
       response.text() || "I apologize, but I could not generate an answer.";
 
@@ -822,16 +903,24 @@ Return ONLY the JSON object, no markdown code blocks, no additional text.`;
 
     // Generate content with the YouTube URL using fileData format
     // Gemini can analyze YouTube videos when passed as fileData
-    const result = await model.generateContent([
-      {
-        fileData: {
-          mimeType: "video/mp4",
-          fileUri: youtubeUrl,
+    // Use longer timeout for YouTube videos (they take longer to process)
+    const generatePromise = model
+      .generateContent([
+        {
+          fileData: {
+            mimeType: "video/mp4",
+            fileUri: youtubeUrl,
+          },
         },
-      },
-      { text: prompt },
-    ]);
-    const response = await result.response;
+        { text: prompt },
+      ])
+      .then((result) => result.response);
+    
+    const response = await withTimeout(
+      generatePromise,
+      TIMEOUTS.youtube,
+      "YouTube video analysis timed out. The video may be too long or complex."
+    );
     const text = response.text().trim();
 
     // Get token usage and track cost
