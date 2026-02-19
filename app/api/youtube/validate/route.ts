@@ -13,6 +13,7 @@ import mongoose from "mongoose";
 import connectDB from "@/lib/db";
 import { getUserIdFromRequest } from "@/lib/auth";
 import { Document } from "@/models/Document";
+import { youtubeValidateSchema, validateRequestWithError } from "@/lib/validations";
 
 // YouTube API configuration
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
@@ -170,14 +171,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get URL from request body
-    const { url } = await request.json();
-    if (!url) {
+    // Extract and validate URL from request body
+    const body = await request.json();
+    const validation = validateRequestWithError(youtubeValidateSchema, body);
+    
+    if (!validation.success) {
       return NextResponse.json(
-        { error: "YouTube URL is required" },
-        { status: 400 }
+        { error: validation.error },
+        { status: validation.status }
       );
     }
+
+    const { url } = validation.data;
 
     // Extract video ID
     const videoId = extractVideoId(url);

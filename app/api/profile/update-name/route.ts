@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { User } from "@/models/User";
 import { getUserIdFromRequest } from "@/lib/auth";
+import { updateNameSchema, validateRequestWithError } from "@/lib/validations";
 
 // Force dynamic rendering since we use request.headers
 export const dynamic = 'force-dynamic';
@@ -20,25 +21,22 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { name } = await request.json();
-
-    if (!name || name.trim().length === 0) {
+    // Extract and validate name from request body
+    const body = await request.json();
+    const validation = validateRequestWithError(updateNameSchema, body);
+    
+    if (!validation.success) {
       return NextResponse.json(
-        { error: "Name is required and cannot be empty" },
-        { status: 400 }
+        { error: validation.error },
+        { status: validation.status }
       );
     }
 
-    if (name.trim().length > 100) {
-      return NextResponse.json(
-        { error: "Name must be less than 100 characters" },
-        { status: 400 }
-      );
-    }
+    const { name } = validation.data;
 
     const user = await User.findByIdAndUpdate(
       userId,
-      { name: name.trim() },
+      { name }, // Already trimmed by Zod
       { new: true }
     ).select("-password");
 

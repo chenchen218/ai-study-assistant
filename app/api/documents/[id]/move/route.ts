@@ -4,6 +4,7 @@ import { Document } from "@/models/Document";
 import { Folder } from "@/models/Folder";
 import { getUserIdFromRequest } from "@/lib/auth";
 import mongoose from "mongoose";
+import { documentMoveSchema, validateRequestWithError } from "@/lib/validations";
 
 // Force dynamic rendering since we use request.headers
 export const dynamic = 'force-dynamic';
@@ -25,7 +26,19 @@ export async function PUT(
     }
 
     const { id } = params;
-    const { folderId } = await request.json();
+    
+    // Extract and validate folder ID from request body
+    const body = await request.json();
+    const validation = validateRequestWithError(documentMoveSchema, body);
+    
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: validation.error },
+        { status: validation.status }
+      );
+    }
+
+    const { folderId } = validation.data;
 
     const document = await Document.findOne({ _id: id, userId });
 

@@ -62,6 +62,7 @@ import pdfParse from "pdf-parse";
 import mammoth from "mammoth";
 import { getUserIdFromRequest } from "@/lib/auth";
 import { rateLimiters } from "@/lib/rate-limit";
+import { qaRequestSchema, validateRequestWithError } from "@/lib/validations";
 
 // Force dynamic rendering since we use request.headers for authentication
 export const dynamic = "force-dynamic";
@@ -86,16 +87,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Extract document ID and question from JSON request body
-    const { documentId, question } = await request.json();
-
-    // Validate that both required fields are provided
-    if (!documentId || !question) {
+    // Extract and validate document ID and question from JSON request body
+    const body = await request.json();
+    const validation = validateRequestWithError(qaRequestSchema, body);
+    
+    if (!validation.success) {
       return NextResponse.json(
-        { error: "Document ID and question are required" },
-        { status: 400 }
+        { error: validation.error },
+        { status: validation.status }
       );
     }
+
+    const { documentId, question } = validation.data;
 
     // Find document and verify ownership
     // Users can only ask questions about their own documents

@@ -4,6 +4,8 @@ import { User } from "@/models/User";
 import { EmailVerification } from "@/models/EmailVerification";
 import { getUserIdFromRequest } from "@/lib/auth";
 import { sendEmailChangeNotification } from "@/lib/email";
+import { z } from "zod";
+import { validateRequestWithError } from "@/lib/validations";
 
 // Force dynamic rendering since we use request.headers
 export const dynamic = 'force-dynamic';
@@ -22,26 +24,26 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { newEmail, verificationCode } = await request.json();
+    // Extract and validate email update data from request body
+    const updateEmailSchema = z.object({
+      newEmail: z.string().min(1, "Email is required").email("Invalid email format").toLowerCase().max(255),
+      verificationCode: z.string().min(1, "Verification code is required").regex(/^\d{6}$/, "Verification code must be 6 digits"),
+    });
 
-    if (!newEmail || !verificationCode) {
+    const body = await request.json();
+    const validation = validateRequestWithError(updateEmailSchema, body);
+    
+    if (!validation.success) {
       return NextResponse.json(
-        { error: "New email and verification code are required" },
-        { status: 400 }
+        { error: validation.error },
+        { status: validation.status }
       );
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(newEmail)) {
-      return NextResponse.json(
-        { error: "Invalid email format" },
-        { status: 400 }
-      );
-    }
+    const { newEmail, verificationCode } = validation.data;
 
     // Check if new email is already taken
-    const existingUser = await User.findOne({ email: newEmail.toLowerCase() });
+    const existingUser = await User.findOne({ email: newEmail }); // Already lowercased by Zod
     if (existingUser && String(existingUser._id) !== userId) {
       return NextResponse.json(
         { error: "Email is already in use by another account" },
@@ -51,8 +53,8 @@ export async function PUT(request: NextRequest) {
 
     // Verify the verification code
     const verification = await EmailVerification.findOne({
-      email: newEmail.toLowerCase(),
-      code: verificationCode.toString(),
+      email: newEmail, // Already lowercased by Zod
+      code: verificationCode,
       verified: true,
     });
 
@@ -74,7 +76,7 @@ export async function PUT(request: NextRequest) {
     // Update email
     const user = await User.findByIdAndUpdate(
       userId,
-      { email: newEmail.toLowerCase() },
+      { email: newEmail }, // Already lowercased by Zod
       { new: true }
     ).select("-password");
 
@@ -82,7 +84,7 @@ export async function PUT(request: NextRequest) {
     await EmailVerification.deleteOne({ _id: verification._id });
 
     // Send notification to old email
-    if (oldEmail !== newEmail.toLowerCase()) {
+    if (oldEmail !== newEmail) { // Already lowercased by Zod
       try {
         await sendEmailChangeNotification(oldEmail, newEmail);
       } catch (emailError) {

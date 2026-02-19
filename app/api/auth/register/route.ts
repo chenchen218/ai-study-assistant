@@ -49,6 +49,7 @@ import { User } from "@/models/User";
 import { EmailVerification } from "@/models/EmailVerification";
 import { generateToken } from "@/lib/auth";
 import { rateLimiters } from "@/lib/rate-limit";
+import { registerSchema, validateRequestWithError } from "@/lib/validations";
 
 export async function POST(request: NextRequest) {
   // Apply rate limiting to prevent spam registrations and abuse
@@ -62,27 +63,18 @@ export async function POST(request: NextRequest) {
     // Establish connection to MongoDB database
     await connectDB();
 
-    // Extract registration data from JSON request body
-    const { email, password, name } = await request.json();
-
-    // Validate that all required fields are provided
-    // Return 400 Bad Request if any field is missing
-    if (!email || !password || !name) {
+    // Extract and validate registration data from JSON request body
+    const body = await request.json();
+    const validation = validateRequestWithError(registerSchema, body);
+    
+    if (!validation.success) {
       return NextResponse.json(
-        { error: "Email, password, and name are required" },
-        { status: 400 }
+        { error: validation.error },
+        { status: validation.status }
       );
     }
 
-    // Validate password strength - minimum 8 characters
-    // This is a basic security requirement to prevent weak passwords
-    // In production, you might want to add more complex requirements (uppercase, numbers, symbols)
-    if (password.length < 8) {
-      return NextResponse.json(
-        { error: "Password must be at least 8 characters long" },
-        { status: 400 }
-      );
-    }
+    const { email, password, name } = validation.data;
 
     // Check if a user with this email already exists
     // Use toLowerCase() for case-insensitive email matching

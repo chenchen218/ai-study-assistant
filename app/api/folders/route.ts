@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { Folder } from "@/models/Folder";
 import { getUserIdFromRequest } from "@/lib/auth";
+import { createFolderSchema, validateRequestWithError } from "@/lib/validations";
 
 // Force dynamic rendering since we use request.headers
 export const dynamic = 'force-dynamic';
@@ -55,19 +56,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { name, color } = await request.json();
-
-    if (!name || name.trim().length === 0) {
+    // Extract and validate folder data from request body
+    const body = await request.json();
+    const validation = validateRequestWithError(createFolderSchema, body);
+    
+    if (!validation.success) {
       return NextResponse.json(
-        { error: "Folder name is required" },
-        { status: 400 }
+        { error: validation.error },
+        { status: validation.status }
       );
     }
+
+    const { name, parentId } = validation.data;
+    const color = body.color || "#8B5CF6"; // Color is optional, use default if not provided
 
     // Check if folder with same name already exists
     const existingFolder = await Folder.findOne({
       userId,
-      name: name.trim(),
+      name, // Already trimmed by Zod
     });
 
     if (existingFolder) {
@@ -79,8 +85,9 @@ export async function POST(request: NextRequest) {
 
     const folder = await Folder.create({
       userId,
-      name: name.trim(),
-      color: color || "#8B5CF6",
+      name, // Already trimmed by Zod
+      color,
+      parentId: parentId || undefined,
     });
 
     console.log(`✅ Folder created: ${folder.name} for user ${userId}`);
