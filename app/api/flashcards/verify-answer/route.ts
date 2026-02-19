@@ -5,6 +5,7 @@ import { Flashcard } from "@/models/Flashcard";
 import { FlashcardPerformance } from "@/models/FlashcardPerformance";
 import { verifyFlashcardAnswer } from "@/lib/ai";
 import { rateLimiters } from "@/lib/rate-limit";
+import { flashcardVerifySchema, validateRequestWithError } from "@/lib/validations";
 
 // Force dynamic rendering since we use request.headers
 export const dynamic = "force-dynamic";
@@ -29,14 +30,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { flashcardId, userAnswer } = await request.json();
-
-    if (!flashcardId || !userAnswer) {
+    // Extract and validate flashcard ID and user answer from request body
+    const body = await request.json();
+    const validation = validateRequestWithError(flashcardVerifySchema, body);
+    
+    if (!validation.success) {
       return NextResponse.json(
-        { error: "Flashcard ID and user answer are required" },
-        { status: 400 }
+        { error: validation.error },
+        { status: validation.status }
       );
     }
+
+    const { flashcardId, userAnswer } = validation.data;
 
     // Find the flashcard
     const flashcard = await Flashcard.findById(flashcardId);

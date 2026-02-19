@@ -39,6 +39,7 @@ import connectDB from "@/lib/db";
 import { User } from "@/models/User";
 import { generateToken } from "@/lib/auth";
 import { rateLimiters } from "@/lib/rate-limit";
+import { loginSchema, validateRequestWithError } from "@/lib/validations";
 
 export async function POST(request: NextRequest) {
   // Apply rate limiting to prevent brute force attacks
@@ -54,17 +55,18 @@ export async function POST(request: NextRequest) {
     // This is required before any database operations
     await connectDB();
 
-    // Extract email and password from the JSON request body
-    const { email, password } = await request.json();
-
-    // Validate that both required fields are provided
-    // Return 400 Bad Request if either field is missing
-    if (!email || !password) {
+    // Extract and validate email and password from the JSON request body
+    const body = await request.json();
+    const validation = validateRequestWithError(loginSchema, body);
+    
+    if (!validation.success) {
       return NextResponse.json(
-        { error: "Email and password are required" },
-        { status: 400 }
+        { error: validation.error },
+        { status: validation.status }
       );
     }
+
+    const { email, password } = validation.data;
 
     // Find user in database by email address
     // Also check that user has a password field (OAuth users may not have passwords)

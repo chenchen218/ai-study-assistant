@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { Document } from "@/models/Document";
 import { getUserIdFromRequest } from "@/lib/auth";
+import { documentRenameSchema, validateRequestWithError } from "@/lib/validations";
 
 // Force dynamic rendering since we use request.headers
 export const dynamic = 'force-dynamic';
@@ -23,14 +24,19 @@ export async function PUT(
     }
 
     const { id } = params;
-    const { fileName } = await request.json();
-
-    if (!fileName || fileName.trim().length === 0) {
+    
+    // Extract and validate file name from request body
+    const body = await request.json();
+    const validation = validateRequestWithError(documentRenameSchema, body);
+    
+    if (!validation.success) {
       return NextResponse.json(
-        { error: "File name is required" },
-        { status: 400 }
+        { error: validation.error },
+        { status: validation.status }
       );
     }
+
+    const { fileName } = validation.data;
 
     const document = await Document.findOne({ _id: id, userId });
 
@@ -41,7 +47,7 @@ export async function PUT(
       );
     }
 
-    document.fileName = fileName.trim();
+    document.fileName = fileName; // Already trimmed by Zod
     await document.save();
 
     console.log(`✅ Document renamed: ${document.fileName} for user ${userId}`);

@@ -18,6 +18,7 @@ import { Summary } from "@/models/Summary";
 import { Note } from "@/models/Note";
 import { Flashcard } from "@/models/Flashcard";
 import { QuizQuestion } from "@/models/QuizQuestion";
+import { youtubeSubmitSchema, validateRequestWithError } from "@/lib/validations";
 
 // Limits (must match validate route)
 const DAILY_LIMIT = 3;
@@ -49,7 +50,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get video details from request body
+    // Extract and validate video details from request body
+    const body = await request.json();
+    const validation = validateRequestWithError(youtubeSubmitSchema, body);
+    
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: validation.error },
+        { status: validation.status }
+      );
+    }
+
     const {
       videoId,
       url,
@@ -58,15 +69,7 @@ export async function POST(request: NextRequest) {
       duration,
       categoryId,
       isEducational,
-    } = await request.json();
-
-    // Validate required fields
-    if (!videoId || !url || !title) {
-      return NextResponse.json(
-        { error: "Missing required fields: videoId, url, title" },
-        { status: 400 }
-      );
-    }
+    } = validation.data;
 
     // Check daily usage limit again (double-check)
     const todayCount = await getTodayUsageCount(userId);

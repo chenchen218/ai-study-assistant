@@ -4,6 +4,7 @@ import { Folder } from "@/models/Folder";
 import { Document } from "@/models/Document";
 import { getUserIdFromRequest } from "@/lib/auth";
 import mongoose from "mongoose";
+import { updateFolderSchema, validateRequestWithError } from "@/lib/validations";
 
 // Force dynamic rendering since we use request.headers
 export const dynamic = 'force-dynamic';
@@ -25,14 +26,20 @@ export async function PUT(
     }
 
     const { id } = params;
-    const { name, color } = await request.json();
-
-    if (!name || name.trim().length === 0) {
+    
+    // Extract and validate folder update data from request body
+    const body = await request.json();
+    const validation = validateRequestWithError(updateFolderSchema, body);
+    
+    if (!validation.success) {
       return NextResponse.json(
-        { error: "Folder name is required" },
-        { status: 400 }
+        { error: validation.error },
+        { status: validation.status }
       );
     }
+
+    const { name } = validation.data;
+    const color = body.color; // Color is optional, handled separately
 
     const folder = await Folder.findOne({ _id: id, userId });
 
@@ -44,10 +51,10 @@ export async function PUT(
     }
 
     // Check if another folder with same name exists
-    if (name.trim() !== folder.name) {
+    if (name !== folder.name) { // Already trimmed by Zod
       const existingFolder = await Folder.findOne({
         userId,
-        name: name.trim(),
+        name, // Already trimmed by Zod
         _id: { $ne: id },
       });
 
@@ -59,7 +66,7 @@ export async function PUT(
       }
     }
 
-    folder.name = name.trim();
+    folder.name = name; // Already trimmed by Zod
     if (color) {
       folder.color = color;
     }

@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import connectDB from "@/lib/db";
 import { User } from "@/models/User";
 import { getUserIdFromRequest } from "@/lib/auth";
+import { changePasswordSchema, validateRequestWithError } from "@/lib/validations";
 
 // Force dynamic rendering since we use request.headers
 export const dynamic = 'force-dynamic';
@@ -21,22 +22,18 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { currentPassword, newPassword } = await request.json();
-
-    if (!currentPassword || !newPassword) {
+    // Extract and validate password change data from request body
+    const body = await request.json();
+    const validation = validateRequestWithError(changePasswordSchema, body);
+    
+    if (!validation.success) {
       return NextResponse.json(
-        { error: "Current password and new password are required" },
-        { status: 400 }
+        { error: validation.error },
+        { status: validation.status }
       );
     }
 
-    // Validate new password
-    if (newPassword.length < 8) {
-      return NextResponse.json(
-        { error: "New password must be at least 8 characters long" },
-        { status: 400 }
-      );
-    }
+    const { currentPassword, newPassword } = validation.data;
 
     // Get user
     const user = await User.findById(userId);

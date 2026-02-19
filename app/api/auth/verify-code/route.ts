@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { EmailVerification } from "@/models/EmailVerification";
 import { rateLimiters } from "@/lib/rate-limit";
+import { verifyCodeSchema, validateRequestWithError } from "@/lib/validations";
 
 // Force dynamic rendering since we use request.json
 export const dynamic = 'force-dynamic';
@@ -21,19 +22,23 @@ export async function POST(request: NextRequest) {
   try {
     await connectDB();
 
-    const { email, code } = await request.json();
-
-    if (!email || !code) {
+    // Extract and validate email and code from request body
+    const body = await request.json();
+    const validation = validateRequestWithError(verifyCodeSchema, body);
+    
+    if (!validation.success) {
       return NextResponse.json(
-        { error: "Email and code are required" },
-        { status: 400 }
+        { error: validation.error },
+        { status: validation.status }
       );
     }
 
+    const { email, code } = validation.data;
+
     // Find verification record
     const verification = await EmailVerification.findOne({
-      email: email.toLowerCase(),
-      code: code.toString(),
+      email: email, // Already lowercased by Zod
+      code: code,
     });
 
     if (!verification) {

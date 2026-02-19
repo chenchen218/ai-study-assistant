@@ -4,6 +4,7 @@ import { EmailVerification } from "@/models/EmailVerification";
 import { User } from "@/models/User";
 import { sendVerificationCode } from "@/lib/email";
 import { rateLimiters } from "@/lib/rate-limit";
+import { sendVerificationCodeSchema, validateRequestWithError } from "@/lib/validations";
 
 // Force dynamic rendering since we use request.json
 export const dynamic = 'force-dynamic';
@@ -31,23 +32,18 @@ export async function POST(request: NextRequest) {
   try {
     await connectDB();
 
-    const { email } = await request.json();
-
-    if (!email) {
+    // Extract and validate email from request body
+    const body = await request.json();
+    const validation = validateRequestWithError(sendVerificationCodeSchema, body);
+    
+    if (!validation.success) {
       return NextResponse.json(
-        { error: "Email is required" },
-        { status: 400 }
+        { error: validation.error },
+        { status: validation.status }
       );
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return NextResponse.json(
-        { error: "Invalid email format" },
-        { status: 400 }
-      );
-    }
+    const { email } = validation.data;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email: email.toLowerCase() });
